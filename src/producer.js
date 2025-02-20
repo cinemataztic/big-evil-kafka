@@ -2,7 +2,6 @@ import { Producer } from 'node-rdkafka';
 import { SchemaRegistry } from '@kafkajs/confluent-schema-registry';
 
 import { avroSchemaRegistry, clientId, brokers } from './utils/config';
-import logger from './utils/logger';
 import retryOptions from './utils/retry';
 
 /* this manages the producer state
@@ -28,25 +27,25 @@ const connect = async () => {
         producer.connect();
 
         isProducerConnected = true;
-        logger.info('Kafka producer successfully connected');
+        console.log('Kafka producer successfully connected');
         resolve();
 
         producer.once('event.error', (err) => {
           isProducerConnected = false;
-          logger.error(`Kafka producer connection error: ${err.message}`);
+          console.error(`Kafka producer connection error: ${err.message}`);
           reject(err);
         });
       }, retryOptions);
     });
   } catch (error) {
-    logger.error(`Error connecting to Kafka producer: ${error}`);
+    console.error(`Error connecting to Kafka producer: ${error}`);
   }
 };
 
 const connectProducer = async () => {
   if (!isProducerConnected) {
-    logger.warn('Kafka producer is not connected. Retrying...');
-    await this.connect();
+    console.warn('Kafka producer is not connected. Retrying...');
+    await connect();
   }
 };
 
@@ -57,7 +56,7 @@ export const sendMessage = async (topic, message) => {
     const subject = `${topic}-value`;
     const id = await registry.getRegistryId(subject, 'latest');
 
-    logger.info(`Using schema ${topic}-value@latest (id: ${id})`);
+    console.log(`Using schema ${topic}-value@latest (id: ${id})`);
 
     const encodedMessage = await registry.encode(id, message);
 
@@ -68,9 +67,9 @@ export const sendMessage = async (topic, message) => {
       `${topic}-schema`, // Key
     );
 
-    logger.info(`Successfully published data to topic: ${topic}`);
+    console.log(`Successfully published data to topic: ${topic}`);
   } else {
-    logger.error('Major issue with the kafka producer init process.');
+    console.error('Major issue with the kafka producer init process.');
   }
 };
 
@@ -80,8 +79,8 @@ export const disconnectProducer = async () => {
     producer.removeAllListeners();
     isProducerConnected = false;
 
-    logger.info('Successfully disconnected Kafka producer');
+    console.log('Successfully disconnected Kafka producer');
   } catch (error) {
-    logger.error(`Error disconnecting Kafka producer: ${error}`);
+    console.error(`Error disconnecting Kafka producer: ${error}`);
   }
 };

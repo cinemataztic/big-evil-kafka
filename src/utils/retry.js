@@ -5,7 +5,7 @@ const retryOptions = {
   numOfAttempts: 3,
   timeMultiple: 2,
   retry: (error, attemptNumber) => {
-    logger.error(`Attempt ${attemptNumber} failed due to error: ${error}`);
+    console.error(`Attempt ${attemptNumber} failed due to error: ${error}`);
     return true; // Retry on failed attempt
   },
 };

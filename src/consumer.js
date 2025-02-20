@@ -3,7 +3,6 @@ import { SchemaRegistry } from '@kafkajs/confluent-schema-registry';
 import { backOff } from 'exponential-backoff';
 
 import { avroSchemaRegistry, clientId, brokers } from './utils/config';
-import logger from './utils/logger';
 import retryOptions from './utils/retry';
 
 /* this manages the consumer state
@@ -35,25 +34,25 @@ const connect = async () => {
 
         consumer.once('ready', () => {
           isConsumerConnected = true;
-          logger.info('Kafka consumer successfully connected');
+          console.log('Kafka consumer successfully connected');
           resolve();
         });
 
         consumer.once('event.error', (err) => {
           isConsumerConnected = false;
-          logger.error(`Kafka consumer connection error: ${err.message}`);
+          console.error(`Kafka consumer connection error: ${err.message}`);
           reject(err);
         });
       }, retryOptions);
     });
   } catch (error) {
-    logger.error(`Error connecting to Kafka consumer: ${error}`);
+    console.error(`Error connecting to Kafka consumer: ${error}`);
   }
 };
 
 const connectConsumer = async () => {
   if (!isConsumerConnected) {
-    logger.warn('Kafka consumer is not connected. Retrying...');
+    console.warn('Kafka consumer is not connected. Retrying...');
     await connect();
   }
 };
@@ -64,7 +63,7 @@ export const consumeMessage = async (topic, onMessage) => {
 
     if (isConsumerConnected) {
       consumer.subscribe([topic]);
-      logger.info(`Subscribed to topic ${topic}`);
+      console.log(`Subscribed to topic ${topic}`);
 
       if (!kafkaConsumerIntervalId) {
         kafkaConsumerIntervalId = setInterval(function () {
@@ -76,18 +75,18 @@ export const consumeMessage = async (topic, onMessage) => {
         try {
           const decodedValue = await registry.decode(data.value);
 
-          logger.info(`Message received by consumer on topic: ${topic}`);
+          console.log(`Message received by consumer on topic: ${topic}`);
 
           onMessage({ value: decodedValue });
         } catch (error) {
-          logger.error(
+          console.error(
             `Error occurred consuming messages from ${topic}: ${error}`,
           );
         }
       });
     }
   } catch (error) {
-    logger.error(`Error occurred in consume: ${error}`);
+    console.error(`Error occurred in consume: ${error}`);
     // Clear Kafka Consumer Polling Interval and set the value to null in case any error occurs in consume method
     clearInterval(kafkaConsumerIntervalId);
     kafkaConsumerIntervalId = null;
@@ -103,8 +102,8 @@ export const disconnectConsumer = async () => {
     // Clear Kafka Consumer Polling Interval and set the value to null
     clearInterval(kafkaConsumerIntervalId);
     kafkaConsumerIntervalId = null;
-    logger.info('Successfully disconnected Kafka consumer');
+    console.log('Successfully disconnected Kafka consumer');
   } catch (error) {
-    logger.error(`Error disconnecting Kafka consumer: ${error}`);
+    console.error(`Error disconnecting Kafka consumer: ${error}`);
   }
 };
