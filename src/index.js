@@ -65,7 +65,7 @@ class KafkaClient {
   #isConsumerConnected;
   /**
    * The interval ID.
-   * @type {Number}
+   * @type {number | NodeJS.Timeout | null}
    * @private
    */
   #intervalId;
@@ -81,16 +81,17 @@ class KafkaClient {
    * @param {String} config.avroSchemaRegistry The schema registry host for deploying avro schemas (default: 'http://localhost:8081')
    */
   constructor(config = {}) {
-  this.#clientId = config.clientId || 'default-client',
-  this.#groupId = config.groupId || 'default-group-id',
-  this.#brokers = config.brokers || ['localhost:9092'],
-  this.#avroSchemaRegistry = config.avroSchemaRegistry || 'http://localhost:8081',
-  this.#producer = new Producer({
+    (this.#clientId = config.clientId || 'default-client'),
+      (this.#groupId = config.groupId || 'default-group-id'),
+      (this.#brokers = config.brokers || ['localhost:9092']),
+      (this.#avroSchemaRegistry =
+        config.avroSchemaRegistry || 'http://localhost:8081'),
+      (this.#producer = new Producer({
         'client.id': this.#clientId,
         'metadata.broker.list': this.#brokers.join(','),
         dr_cb: false,
-  }),
-  this.#consumer = new KafkaConsumer(
+      })),
+      (this.#consumer = new KafkaConsumer(
         {
           'group.id': this.#groupId,
           'client.id': this.#clientId,
@@ -99,13 +100,13 @@ class KafkaClient {
           'auto.commit.interval.ms': 1000,
         },
         {},
-  ),
-  this.#registry = new SchemaRegistry({
+      )),
+      (this.#registry = new SchemaRegistry({
         host: this.#avroSchemaRegistry,
-  }),
-  this.#isProducerConnected = false,
-  this.#isConsumerConnected = false,
-  this.#intervalId = null
+      })),
+      (this.#isProducerConnected = false),
+      (this.#isConsumerConnected = false),
+      (this.#intervalId = null);
   }
 
   /**
@@ -130,7 +131,7 @@ class KafkaClient {
         }, retryOptions);
       });
     } catch (error) {
-      console.error(`Error connecting to Kafka producer: ${error}`);
+      throw new Error(`Error connecting to Kafka producer: ${error}`);
     }
   }
 
@@ -158,7 +159,7 @@ class KafkaClient {
         }, retryOptions);
       });
     } catch (error) {
-      console.error(`Error connecting to Kafka consumer: ${error}`);
+      throw new Error(`Error connecting to Kafka consumer: ${error}`);
     }
   }
 
@@ -167,9 +168,13 @@ class KafkaClient {
    * @private
    */
   async #initProducer() {
-    if (!this.#isProducerConnected) {
-      console.warn('Kafka producer is not connected. Retrying...');
-      await this.#connectProducer();
+    try {
+      if (!this.#isProducerConnected) {
+        console.warn('Kafka producer is not connected. Retrying...');
+        await this.#connectProducer();
+      }
+    } catch (error) {
+      throw new Error(`Error initializing producer: ${error}`);
     }
   }
 
@@ -178,9 +183,13 @@ class KafkaClient {
    * @private
    */
   async #initConsumer() {
-    if (!this.#isConsumerConnected) {
-      console.warn('Kafka consumer is not connected. Retrying...');
-      await this.#connectConsumer();
+    try {
+      if (!this.#isConsumerConnected) {
+        console.warn('Kafka consumer is not connected. Retrying...');
+        await this.#connectConsumer();
+      }
+    } catch (error) {
+      throw new Error(`Error initializing producer: ${error}`);
     }
   }
 
@@ -212,9 +221,13 @@ class KafkaClient {
         console.log(`Successfully published data to topic: ${topic}`);
       } else {
         console.error('Major issue with the kafka producer init process.');
+        throw new Error('Unable to initialize kafka producer');
       }
     } catch (error) {
       console.error(
+        `Error occurred in sending message to topic ${topic}: ${error}`,
+      );
+      throw new Error(
         `Error occurred in sending message to topic ${topic}: ${error}`,
       );
     }
@@ -256,6 +269,7 @@ class KafkaClient {
         });
       } else {
         console.error('Major issue with the kafka consumer init process.');
+        throw new Error('Unable to initialize kafka producer');
       }
     } catch (error) {
       console.error(
@@ -263,6 +277,9 @@ class KafkaClient {
       );
       clearInterval(this.#intervalId);
       this.#intervalId = null;
+      throw new Error(
+        `Error occurred in consuming message from topic ${topic}: ${error}`,
+      );
     }
   }
 
@@ -279,6 +296,7 @@ class KafkaClient {
       console.log('Successfully disconnected Kafka producer');
     } catch (error) {
       console.error(`Error disconnecting Kafka producer: ${error}`);
+      throw new Error(`Error disconnecting Kafka producer: ${error}`);
     }
   }
 
@@ -297,6 +315,9 @@ class KafkaClient {
       console.log('Successfully disconnected Kafka consumer');
     } catch (error) {
       console.error(`Error disconnecting Kafka consumer: ${error}`);
+      clearInterval(this.#intervalId);
+      this.#intervalId = null;
+      throw new Error(`Error disconnecting Kafka consumer: ${error}`);
     }
   }
 }
