@@ -11,8 +11,6 @@ npm-debug.log
 # VSCODE
 .prettierrc
 .prettierignore
-.eslintrc
-.eslintignore
 
 #env
 *.env*
