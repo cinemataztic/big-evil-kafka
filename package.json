@@ -15,5 +15,8 @@
     "@kafkajs/confluent-schema-registry": "^3.6.1",
     "exponential-backoff": "^3.1.2",
     "node-rdkafka": "^3.2.1"
+  },
+  "devDependencies": {
+    "prettier": "^3.5.1"
   }
 }
