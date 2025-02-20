@@ -9,7 +9,7 @@
   "keywords": [
     "kafka"
   ],
-  "author": "\"Cinemataztic\"",
+  "author": "Cinemataztic",
   "license": "ISC",
   "dependencies": {
     "@kafkajs/confluent-schema-registry": "^3.6.1",
