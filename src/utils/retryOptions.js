@@ -18,4 +18,4 @@ const retryOptions = {
   },
 };
 
-export default retryOptions;
+module.exports = retryOptions;

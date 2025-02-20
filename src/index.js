@@ -1,14 +1,14 @@
-import { Producer, KafkaConsumer } from 'node-rdkafka';
-import { SchemaRegistry } from '@kafkajs/confluent-schema-registry';
-import { backOff } from 'exponential-backoff';
+const { Producer, KafkaConsumer } = require('node-rdkafka');
+const { SchemaRegistry } = require('@kafkajs/confluent-schema-registry');
+const { backOff } = require('exponential-backoff');
 
-import retryOptions from './utils/retryOptions';
+const retryOptions = require('./utils/retryOptions');
 
 /**
  * Kafka client which is a wrapper library around node-rdkafka
  *
  */
-export class KafkaClient {
+class KafkaClient {
   /**
    * The client identifier .
    * @type {String}
@@ -81,17 +81,17 @@ export class KafkaClient {
    * @param {String} config.avroSchemaRegistry The schema registry host for deploying avro schemas (default: 'http://localhost:8081')
    */
   constructor(config = {}) {
-    this.#clientId = config.clientId || 'default-client',
-    this.#groupId = config.groupId || 'default-group-id',
-    this.#brokers = config.brokers || ['localhost:9092'],
-    this.#avroSchemaRegistry= config.avroSchemaRegistry || 'http://localhost:8081',
-
-    this.#producer = new Producer({
-      'client.id': this.#clientId,
-      'metadata.broker.list': this.#brokers.join(','),
-      dr_cb: false,
-    }),
-    this.#producer = new KafkaConsumer(
+    (this.#clientId = config.clientId || 'default-client'),
+      (this.#groupId = config.groupId || 'default-group-id'),
+      (this.#brokers = config.brokers || ['localhost:9092']),
+      (this.#avroSchemaRegistry =
+        config.avroSchemaRegistry || 'http://localhost:8081'),
+      (this.#producer = new Producer({
+        'client.id': this.#clientId,
+        'metadata.broker.list': this.#brokers.join(','),
+        dr_cb: false,
+      })),
+      (this.#producer = new KafkaConsumer(
         {
           'group.id': this.#groupId,
           'client.id': this.#clientId,
@@ -100,14 +100,13 @@ export class KafkaClient {
           'auto.commit.interval.ms': 1000,
         },
         {},
-    ),
-    this.#registry = new SchemaRegistry({
+      )),
+      (this.#registry = new SchemaRegistry({
         host: this.#avroSchemaRegistry,
-    }),
-    
-    this.#isProducerConnected = false,
-    this.#isConsumerConnected = false,
-    this.#intervalId = null
+      })),
+      (this.#isProducerConnected = false),
+      (this.#isConsumerConnected = false),
+      (this.#intervalId = null);
   }
 
   /**
@@ -285,7 +284,7 @@ export class KafkaClient {
   }
 
   /**
-   * Disconnects node-rdkafka client's consumer and removes all associated listeners if any. 
+   * Disconnects node-rdkafka client's consumer and removes all associated listeners if any.
    * @public
    */
   async disconnectConsumer() {
@@ -303,3 +302,4 @@ export class KafkaClient {
   }
 }
 
+module.exports = { KafkaClient };
