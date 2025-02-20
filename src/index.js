@@ -249,7 +249,7 @@ class KafkaClient {
         console.log(`Subscribed to topic ${topic}`);
 
         if (!this.#intervalId) {
-          this.#intervalId = setInterval(function () {
+          this.#intervalId = setInterval(() => {
             this.#consumer.consume(10); // Read 10 messages every 1000 milliseconds.
           }, 1000);
         }
