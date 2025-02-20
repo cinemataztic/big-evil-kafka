@@ -289,11 +289,13 @@ class KafkaClient {
    */
   async disconnectProducer() {
     try {
-      this.#producer.disconnect();
-      this.#producer.removeAllListeners();
-      this.#isProducerConnected = false;
+      if (this.#isProducerConnected) {
+        this.#producer.disconnect();
+        this.#producer.removeAllListeners();
+        this.#isProducerConnected = false;
 
-      console.log('Successfully disconnected Kafka producer');
+        console.log('Successfully disconnected Kafka producer');
+      }
     } catch (error) {
       console.error(`Error disconnecting Kafka producer: ${error}`);
       throw new Error(`Error disconnecting Kafka producer: ${error}`);
@@ -306,13 +308,15 @@ class KafkaClient {
    */
   async disconnectConsumer() {
     try {
-      this.#consumer.disconnect();
-      this.#consumer.removeAllListeners();
-      this.#isConsumerConnected = false;
+      if (this.#isConsumerConnected) {
+        this.#consumer.disconnect();
+        this.#consumer.removeAllListeners();
+        this.#isConsumerConnected = false;
 
-      clearInterval(this.#intervalId);
-      this.#intervalId = null;
-      console.log('Successfully disconnected Kafka consumer');
+        clearInterval(this.#intervalId);
+        this.#intervalId = null;
+        console.log('Successfully disconnected Kafka consumer');
+      }
     } catch (error) {
       console.error(`Error disconnecting Kafka consumer: ${error}`);
       clearInterval(this.#intervalId);
