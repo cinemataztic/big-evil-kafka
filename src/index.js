@@ -10,6 +10,67 @@ import retryOptions from './utils/retryOptions';
  */
 export class KafkaClient {
   /**
+   * The client identifier .
+   * @type {String}
+   * @private
+   */
+  #clientId;
+  /**
+   * The client group id string.
+   * @type {String}
+   * @private
+   */
+  #groupId;
+  /**
+   * The list of brokers.
+   * @type {Array}
+   * @private
+   */
+  #brokers;
+  /**
+   * The schema registry host.
+   * @type {String}
+   * @private
+   */
+  #avroSchemaRegistry;
+  /**
+   * The producer instance.
+   * @type {Object}
+   * @private
+   */
+  #producer;
+  /**
+   * The consumer instance.
+   * @type {Object}
+   * @private
+   */
+  #consumer;
+  /**
+   * The schema registry instance.
+   * @type {Object}
+   * @private
+   */
+  #registry;
+  /**
+   * The producer connection flag.
+   * @type {Boolean}
+   * @private
+   */
+  #isProducerConnected;
+  /**
+   * The consumer connection flag.
+   * @type {Boolean}
+   * @private
+   */
+  #isConsumerConnected;
+  /**
+   * The interval ID.
+   * @type {Number}
+   * @private
+   */
+  #intervalId;
+
+  /**
    * Initialize Kafka Client
    * @constructor
    * @public
@@ -20,33 +81,33 @@ export class KafkaClient {
    * @param {String} config.avroSchemaRegistry The schema registry host for deploying avro schemas (default: 'http://localhost:8081')
    */
   constructor(config = {}) {
-    this.clientId = config.clientId || 'default-client',
-    this.groupId = config.groupId || 'default-group-id',
-    this.brokers = config.brokers || ['localhost:9092'],
-    this.avroSchemaRegistry = config.avroSchemaRegistry || 'http://localhost:8081',
+    this.#clientId = config.clientId || 'default-client',
+    this.#groupId = config.groupId || 'default-group-id',
+    this.#brokers = config.brokers || ['localhost:9092'],
+    this.#avroSchemaRegistry= config.avroSchemaRegistry || 'http://localhost:8081',
 
-    this.producer = new Producer({
-      'client.id': this.clientId,
-      'metadata.broker.list': this.brokers.join(','),
+    this.#producer = new Producer({
+      'client.id': this.#clientId,
+      'metadata.broker.list': this.#brokers.join(','),
       dr_cb: false,
     }),
-    this.consumer = new KafkaConsumer(
+    this.#producer = new KafkaConsumer(
         {
-          'group.id': this.groupId,
-          'client.id': this.clientId,
-          'metadata.broker.list': this.brokers.join(','),
+          'group.id': this.#groupId,
+          'client.id': this.#clientId,
+          'metadata.broker.list': this.#brokers.join(','),
           'enable.auto.commit': true,
           'auto.commit.interval.ms': 1000,
         },
         {},
     ),
-    this.registry = new SchemaRegistry({
-        host: this.avroSchemaRegistry,
+    this.#registry = new SchemaRegistry({
+        host: this.#avroSchemaRegistry,
     }),
     
-    this.isProducerConnected = false,
-    this.isConsumerConnected = false,
-    this.intervalId = null
+    this.#isProducerConnected = false,
+    this.#isConsumerConnected = false,
+    this.#intervalId = null
   }
 
   /**
@@ -57,14 +118,14 @@ export class KafkaClient {
     try {
       await backOff(() => {
         return new Promise((resolve, reject) => {
-          this.producer.connect();
+          this.#producer.connect();
 
-          this.isProducerConnected = true;
+          this.#isProducerConnected = true;
           console.log('Kafka producer successfully connected');
           resolve();
 
-          this.producer.once('event.error', (err) => {
-            this.isProducerConnected = false;
+          this.#producer.once('event.error', (err) => {
+            this.#isProducerConnected = false;
             console.error(`Kafka producer connection error: ${err.message}`);
             reject(err);
           });
@@ -83,16 +144,16 @@ export class KafkaClient {
     try {
       await backOff(() => {
         return new Promise((resolve, reject) => {
-          this.consumer.connect();
+          this.#consumer.connect();
 
-          this.consumer.once('ready', () => {
-            this.isConsumerConnected = true;
+          this.#consumer.once('ready', () => {
+            this.#isConsumerConnected = true;
             console.log('Kafka consumer successfully connected');
             resolve();
           });
 
-          this.consumer.once('event.error', (err) => {
-            this.isConsumerConnected = false;
+          this.#consumer.once('event.error', (err) => {
+            this.#isConsumerConnected = false;
             console.error(`Kafka consumer connection error: ${err.message}`);
             reject(err);
           });
@@ -108,7 +169,7 @@ export class KafkaClient {
    * @private
    */
   async #initProducer() {
-    if (!this.isProducerConnected) {
+    if (!this.#isProducerConnected) {
       console.warn('Kafka producer is not connected. Retrying...');
       await this.#connectProducer();
     }
@@ -119,14 +180,14 @@ export class KafkaClient {
    * @private
    */
   async #initConsumer() {
-    if (!this.isConsumerConnected) {
+    if (!this.#isConsumerConnected) {
       console.warn('Kafka consumer is not connected. Retrying...');
       await this.#connectConsumer();
     }
   }
 
   /**
-   * Sends an encoded message to a topic. Encodes the message data using this.registry.encode
+   * Sends an encoded message to a topic. Encodes the message data using this.#registry.encode
    * @param {String} topic The topic to send the message to
    * @param {Object} message The message to send to a topic
    * @public
@@ -135,15 +196,15 @@ export class KafkaClient {
     try {
       await this.#initProducer();
 
-      if (this.isProducerConnected) {
+      if (this.#isProducerConnected) {
         const subject = `${topic}-value`;
-        const id = await this.registry.getRegistryId(subject, 'latest');
+        const id = await this.#registry.getRegistryId(subject, 'latest');
 
         console.log(`Using schema ${topic}-value@latest (id: ${id})`);
 
-        const encodedMessage = await this.registry.encode(id, message);
+        const encodedMessage = await this.#registry.encode(id, message);
 
-        this.producer.produce(
+        this.#producer.produce(
           topic,
           null, // Partition, null for automatic partitioning
           Buffer.from(encodedMessage),
@@ -162,7 +223,7 @@ export class KafkaClient {
   }
 
   /**
-   * Consumes a message from a topic. Decodes the message using this.registry.decode
+   * Consumes a message from a topic. Decodes the message using this.#registry.decode
    * @param {String} topic The topic to consume the message from
    * @callback onMessage
    * @param {onMessage} onMessage A function that processes the decoded message data received by consumer
@@ -172,19 +233,19 @@ export class KafkaClient {
     try {
       await this.#initConsumer();
 
-      if (this.isConsumerConnected) {
-        this.consumer.subscribe([topic]);
+      if (this.#isConsumerConnected) {
+        this.#consumer.subscribe([topic]);
         console.log(`Subscribed to topic ${topic}`);
 
-        if (!this.intervalId) {
-          this.intervalId = setInterval(function () {
-            this.consumer.consume(10); // Read 10 messages every 1000 milliseconds.
+        if (!this.#intervalId) {
+          this.#intervalId = setInterval(function () {
+            this.#consumer.consume(10); // Read 10 messages every 1000 milliseconds.
           }, 1000);
         }
 
-        this.consumer.on('data', async (data) => {
+        this.#consumer.on('data', async (data) => {
           try {
-            const decodedValue = await this.registry.decode(data.value);
+            const decodedValue = await this.#registry.decode(data.value);
 
             console.log(`Message received by consumer on topic: ${topic}`);
 
@@ -202,8 +263,8 @@ export class KafkaClient {
       console.error(
         `Error occurred in consuming message from topic ${topic}: ${error}`,
       );
-      clearInterval(this.intervalId);
-      this.intervalId = null;
+      clearInterval(this.#intervalId);
+      this.#intervalId = null;
     }
   }
 
@@ -213,9 +274,9 @@ export class KafkaClient {
    */
   async disconnectProducer() {
     try {
-      this.producer.disconnect();
-      this.producer.removeAllListeners();
-      this.isProducerConnected = false;
+      this.#producer.disconnect();
+      this.#producer.removeAllListeners();
+      this.#isProducerConnected = false;
 
       console.log('Successfully disconnected Kafka producer');
     } catch (error) {
@@ -229,12 +290,12 @@ export class KafkaClient {
    */
   async disconnectConsumer() {
     try {
-      this.consumer.disconnect();
-      this.consumer.removeAllListeners();
-      this.isConsumerConnected = false;
+      this.#consumer.disconnect();
+      this.#consumer.removeAllListeners();
+      this.#isConsumerConnected = false;
 
-      clearInterval(this.intervalId);
-      this.intervalId = null;
+      clearInterval(this.#intervalId);
+      this.#intervalId = null;
       console.log('Successfully disconnected Kafka consumer');
     } catch (error) {
       console.error(`Error disconnecting Kafka consumer: ${error}`);
