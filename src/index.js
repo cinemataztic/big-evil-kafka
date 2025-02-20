@@ -4,7 +4,11 @@ import { backOff } from 'exponential-backoff';
 
 import retryOptions from './utils/retryOptions';
 
-class KafkaClient {
+/**
+ * Kafka client which is a wrapper library around node-rdkafka
+ *
+ */
+export class KafkaClient {
   /**
    * Initialize Kafka Client
    * @constructor
@@ -238,4 +242,3 @@ class KafkaClient {
   }
 }
 
-export default KafkaClient;
