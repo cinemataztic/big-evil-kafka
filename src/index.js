@@ -81,17 +81,16 @@ class KafkaClient {
    * @param {String} config.avroSchemaRegistry The schema registry host for deploying avro schemas (default: 'http://localhost:8081')
    */
   constructor(config = {}) {
-    (this.#clientId = config.clientId || 'default-client'),
-      (this.#groupId = config.groupId || 'default-group-id'),
-      (this.#brokers = config.brokers || ['localhost:9092']),
-      (this.#avroSchemaRegistry =
-        config.avroSchemaRegistry || 'http://localhost:8081'),
-      (this.#producer = new Producer({
+  this.#clientId = config.clientId || 'default-client',
+  this.#groupId = config.groupId || 'default-group-id',
+  this.#brokers = config.brokers || ['localhost:9092'],
+  this.#avroSchemaRegistry = config.avroSchemaRegistry || 'http://localhost:8081',
+  this.#producer = new Producer({
         'client.id': this.#clientId,
         'metadata.broker.list': this.#brokers.join(','),
         dr_cb: false,
-      })),
-      (this.#producer = new KafkaConsumer(
+  }),
+  this.#consumer = new KafkaConsumer(
         {
           'group.id': this.#groupId,
           'client.id': this.#clientId,
@@ -100,13 +99,13 @@ class KafkaClient {
           'auto.commit.interval.ms': 1000,
         },
         {},
-      )),
-      (this.#registry = new SchemaRegistry({
+  ),
+  this.#registry = new SchemaRegistry({
         host: this.#avroSchemaRegistry,
-      })),
-      (this.#isProducerConnected = false),
-      (this.#isConsumerConnected = false),
-      (this.#intervalId = null);
+  }),
+  this.#isProducerConnected = false,
+  this.#isConsumerConnected = false,
+  this.#intervalId = null
   }
 
   /**
