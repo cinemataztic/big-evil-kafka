@@ -2,7 +2,7 @@ import { Producer, KafkaConsumer } from 'node-rdkafka';
 import { SchemaRegistry } from '@kafkajs/confluent-schema-registry';
 import { backOff } from 'exponential-backoff';
 
-import retryOptions from './utils/retry';
+import retryOptions from './utils/retryOptions';
 
 class KafkaClient {
   /**
