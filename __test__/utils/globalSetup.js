@@ -1,12 +1,16 @@
 const { GenericContainer, Network, Wait } = require('testcontainers');
 const { KafkaContainer } = require('@testcontainers/kafka');
 
+const { values } = require('../common');
+const { registerAvroSchema } = require('./registerAvroSchema');
+
 module.exports = async () => {
   const network = await new Network().start();
 
   // Start ZooKeeper
-  const zooKeeperHost = 'zookeeper';
-  const zooKeeperPort = 2181;
+  const zooKeeperHost = values.zookeeper.host;
+  const zooKeeperPort = values.zookeeper.port;
+
   const zookeeperContainer = await new GenericContainer(
     'confluentinc/cp-zookeeper:7.5.2',
   )
@@ -14,19 +18,17 @@ module.exports = async () => {
     .withNetworkAliases(zooKeeperHost)
     .withEnvironment({ ZOOKEEPER_CLIENT_PORT: zooKeeperPort.toString() })
     .withExposedPorts(zooKeeperPort)
-    .withWaitStrategy(Wait.forLogMessage('binding to port'))
     .start();
-  console.log('✅ ZooKeeper started');
 
   // Start Kafka
-  const kafkaHost = 'kafka';
-  const kafkaPort = 9092;
+  const kafkaHost = values.kafka.host;
+  const kafkaPort = values.kafka.port;
+
   const kafkaContainer = await new KafkaContainer('confluentinc/cp-kafka:7.5.2')
     .withNetwork(network)
     .withNetworkAliases(kafkaHost)
     .withZooKeeper(zooKeeperHost, zooKeeperPort)
     .withEnvironment({
-      KAFKA_CONFLUENT_SCHEMA_REGISTRY_URL: 'http://schema-registry:8081',
       KAFKA_ADVERTISED_LISTENERS: `PLAINTEXT://${kafkaHost}:${kafkaPort}`,
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: '1',
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true',
@@ -34,20 +36,17 @@ module.exports = async () => {
     .withExposedPorts(kafkaPort)
     .withWaitStrategy(
       Wait.forSuccessfulCommand(
-        `/bin/sh -c "nc -zv ${kafkaHost} ${kafkaPort}"`,
+        `/bin/sh -c "nc -zv ${kafkaHost} ${kafkaPort}"`, // Test network connection to kafka via kafkaHost and kafkaPort
       ),
     )
     .start();
 
   const kafkaBootstrapServers = `PLAINTEXT://${kafkaHost}:${kafkaPort}`;
 
-  console.log('kafkaBootstrapServers', kafkaBootstrapServers);
-
-  console.log('✅ Kafka started');
-
   // Start Schema Registry
-  const schemaRegistryHost = 'schema-registry';
-  const schemaRegistryPort = 8081;
+  const schemaRegistryHost = values.schemaRegistry.host;
+  const schemaRegistryPort = values.schemaRegistry.port;
+
   const schemaRegistryContainer = await new GenericContainer(
     'confluentinc/cp-schema-registry:7.5.2',
   )
@@ -65,15 +64,13 @@ module.exports = async () => {
     )
     .start();
 
-  console.log('✅ Schema Registry started');
+  await registerAvroSchema(schemaRegistryContainer, schemaRegistryPort);
 
-  // Store containers in global memory
+  // Store references to containers in globalThis under __TEST_CONTAINERS__ umbrella
   globalThis.__TEST_CONTAINERS__ = {
     network,
     zookeeperContainer,
     kafkaContainer,
     schemaRegistryContainer,
   };
-
-  console.log('Kafka and ZooKeeper are up and running!');
 };

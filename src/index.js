@@ -114,8 +114,6 @@ class KafkaClient {
     try {
       await backOff(() => {
         return new Promise((resolve, reject) => {
-          this.#producer.connect();
-
           this.#producer.once('ready', () => {
             this.#isProducerConnected = true;
             console.log('Kafka producer successfully connected');
@@ -127,6 +125,8 @@ class KafkaClient {
             console.error(`Kafka producer connection error: ${err.message}`);
             reject(err);
           });
+
+          this.#producer.connect();
         }, retryOptions);
       });
     } catch (error) {
@@ -142,8 +142,6 @@ class KafkaClient {
     try {
       await backOff(() => {
         return new Promise((resolve, reject) => {
-          this.#consumer.connect();
-
           this.#consumer.once('ready', () => {
             this.#isConsumerConnected = true;
             console.log('Kafka consumer successfully connected');
@@ -155,6 +153,8 @@ class KafkaClient {
             console.error(`Kafka consumer connection error: ${err.message}`);
             reject(err);
           });
+
+          this.#consumer.connect();
         }, retryOptions);
       });
     } catch (error) {
@@ -184,7 +184,7 @@ class KafkaClient {
   async #initConsumer() {
     try {
       if (!this.#isConsumerConnected) {
-        console.warn('Kafka consumer is not connected. Connecting consumer');
+        console.log('Kafka consumer is not connected. Connecting consumer');
         await this.#connectConsumer();
       }
     } catch (error) {

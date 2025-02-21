@@ -19,7 +19,6 @@
   },
   "devDependencies": {
     "@testcontainers/kafka": "^10.18.0",
-    "avsc": "^5.7.7",
     "axios": "^1.7.9",
     "cross-env": "^7.0.3",
     "jest": "^29.7.0",
