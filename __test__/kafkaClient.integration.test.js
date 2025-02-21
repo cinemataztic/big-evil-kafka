@@ -2,14 +2,9 @@ const avro = require('avsc');
 
 const { KafkaClient } = require('../src');
 
-const { kafkaContainer, schemaRegistryContainer } =
-  globalThis.__TEST_CONTAINERS__;
-
 const topic = 'cinemataztic';
-const brokers = [
-  `${kafkaContainer.getHost()}:${kafkaContainer.getMappedPort(9092)}`,
-];
-const SCHEMA_REGISTRY_URL = `http://localhost:${schemaRegistryContainer.getMappedPort(8081)}`;
+const brokers = ['kafka:9092'];
+const SCHEMA_REGISTRY_URL = 'http://schema-registry:80801';
 
 const config = {
   clientId: 'ctz-client',

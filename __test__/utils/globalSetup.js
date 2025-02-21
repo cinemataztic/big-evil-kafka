@@ -32,10 +32,14 @@ module.exports = async () => {
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true',
     })
     .withExposedPorts(kafkaPort)
-    .withWaitStrategy(Wait.forLogMessage('started (kafka.server.KafkaServer)'))
+    .withWaitStrategy(
+      Wait.forSuccessfulCommand(
+        `/bin/sh -c "nc -zv ${kafkaHost} ${kafkaPort}"`,
+      ),
+    )
     .start();
 
-  const kafkaBootstrapServers = `PLAINTEXT://${kafkaContainer.getHost()}:${kafkaContainer.getMappedPort(kafkaPort)}`;
+  const kafkaBootstrapServers = `PLAINTEXT://${kafkaHost}:${kafkaPort}`;
 
   console.log('kafkaBootstrapServers', kafkaBootstrapServers);
 
