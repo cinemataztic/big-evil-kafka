@@ -84,7 +84,8 @@ class KafkaClient {
     this.#clientId = config.clientId || 'default-client';
     this.#groupId = config.groupId || 'default-group-id';
     this.#brokers = config.brokers || ['localhost:9092'];
-    this.#avroSchemaRegistry = config.avroSchemaRegistry || 'http://localhost:8081';
+    this.#avroSchemaRegistry =
+      config.avroSchemaRegistry || 'http://localhost:8081';
 
     this.#producer = new Producer({
       'client.id': this.#clientId,
@@ -114,6 +115,8 @@ class KafkaClient {
     try {
       await backOff(() => {
         return new Promise((resolve, reject) => {
+          this.#producer.connect();
+
           this.#producer.once('ready', () => {
             this.#isProducerConnected = true;
             console.log('Kafka producer successfully connected');
@@ -125,8 +128,6 @@ class KafkaClient {
             console.error(`Kafka producer connection error: ${err.message}`);
             reject(err);
           });
-
-          this.#producer.connect();
         }, retryOptions);
       });
     } catch (error) {
@@ -142,6 +143,8 @@ class KafkaClient {
     try {
       await backOff(() => {
         return new Promise((resolve, reject) => {
+          this.#consumer.connect();
+
           this.#consumer.once('ready', () => {
             this.#isConsumerConnected = true;
             console.log('Kafka consumer successfully connected');
@@ -153,8 +156,6 @@ class KafkaClient {
             console.error(`Kafka consumer connection error: ${err.message}`);
             reject(err);
           });
-
-          this.#consumer.connect();
         }, retryOptions);
       });
     } catch (error) {

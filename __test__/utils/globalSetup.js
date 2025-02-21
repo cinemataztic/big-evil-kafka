@@ -20,6 +20,8 @@ module.exports = async () => {
     .withExposedPorts(zooKeeperPort)
     .start();
 
+  console.log('Zookeeper container has started');
+
   // Start Kafka
   const kafkaHost = values.kafka.host;
   const kafkaPort = values.kafka.port;
@@ -40,6 +42,8 @@ module.exports = async () => {
       ),
     )
     .start();
+
+  console.log('Kafka container has started');
 
   const kafkaBootstrapServers = `PLAINTEXT://${kafkaHost}:${kafkaPort}`;
 
@@ -63,6 +67,8 @@ module.exports = async () => {
       Wait.forHttp('/subjects', schemaRegistryPort).forStatusCode(200),
     )
     .start();
+
+  console.log('Schema Registry container has started');
 
   await registerAvroSchema(schemaRegistryContainer, schemaRegistryPort);
 

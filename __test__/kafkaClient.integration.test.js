@@ -5,18 +5,19 @@ const { schemaRegistryContainer } = globalThis.__TEST_CONTAINERS__;
 
 const topic = constats.TOPIC;
 
+config['avroSchemaRegistry'] =
+  `http://localhost:${schemaRegistryContainer.getMappedPort(values.schemaRegistry.port)}`;
+
 let kafkaClient;
 let logSpy;
 
 beforeAll(async () => {
-  config['avroSchemaRegistry'] =
-    `http://localhost:${schemaRegistryContainer.getMappedPort(values.schemaRegistry.port)}`;
   kafkaClient = new KafkaClient(config);
-
   logSpy = jest.spyOn(console, 'log').mockImplementation();
 });
 
 describe('Kafka Client Integration test', () => {
+  beforeEach(() => {});
   test('should log message when producer is connected', async () => {
     await kafkaClient.sendMessage(topic, { message: 'Hello Cinemataztic' });
     expect(logSpy).toHaveBeenCalledWith(
@@ -42,8 +43,8 @@ describe('Kafka Client Integration test', () => {
   test('should log message when consumer receives a message', async () => {});
 });
 
-afterAll(() => {
-  kafkaClient.disconnectProducer();
-  // kafkaClient.disconnectConsumer();
-  logSpy.mockRestore();
-});
+// afterAll(() => {
+//   // kafkaClient.disconnectProducer();
+//   // kafkaClient.disconnectConsumer();
+//   logSpy.mockRestore();
+// });

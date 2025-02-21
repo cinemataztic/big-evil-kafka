@@ -9,9 +9,15 @@ module.exports = async () => {
 
     await zookeeperContainer.stop();
 
+    console.log('Zookeeper container has stopped');
+
     await kafkaContainer.stop();
 
+    console.log('Kafka container has stopped');
+
     await schemaRegistryContainer.stop();
+
+    console.log('Schema Registry container has stopped');
 
     await network.stop();
   }

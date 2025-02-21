@@ -7,7 +7,7 @@ const registerAvroSchema = async (schemaRegistryContainer, schemaRegistryPort) =
     const response = await axios.post(schemaRegistryUrl, avroSchema, {
       headers: { 'Content-Type': 'application/vnd.schemaregistry.v1+json' },
     });
-    console.log(`Successfully registered Avro Schema: ${response.data}`);
+    console.log(`Successfully registered Avro Schema: ${JSON.stringify(response.data)}`);
   } catch (error) {
     console.error(`Error registering Avro Schema: ${error}`);
   }
