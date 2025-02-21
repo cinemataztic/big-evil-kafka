@@ -263,7 +263,7 @@ class KafkaClient {
         });
       } else {
         console.error('Major issue with the kafka consumer init process.');
-        throw new Error('Unable to initialize kafka producer');
+        throw new Error('Unable to initialize kafka consumer');
       }
     } catch (error) {
       console.error(
