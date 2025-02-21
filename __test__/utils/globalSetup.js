@@ -26,6 +26,7 @@ module.exports = async () => {
     .withNetworkAliases(kafkaHost)
     .withZooKeeper(zooKeeperHost, zooKeeperPort)
     .withEnvironment({
+      KAFKA_CONFLUENT_SCHEMA_REGISTRY_URL: 'http://schema-registry:8081',
       KAFKA_ADVERTISED_LISTENERS: `PLAINTEXT://${kafkaHost}:${kafkaPort}`,
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: '1',
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true',
@@ -36,9 +37,9 @@ module.exports = async () => {
 
   const kafkaBootstrapServers = `PLAINTEXT://${kafkaContainer.getHost()}:${kafkaContainer.getMappedPort(kafkaPort)}`;
 
-  console.log('✅ Kafka started');
+  console.log('kafkaBootstrapServers', kafkaBootstrapServers);
 
-  await new Promise((resolve) => setTimeout(resolve, 5000));
+  console.log('✅ Kafka started');
 
   // Start Schema Registry
   const schemaRegistryHost = 'schema-registry';
@@ -48,16 +49,13 @@ module.exports = async () => {
   )
     .withNetwork(network)
     .withNetworkAliases(schemaRegistryHost)
+    .withEnvironment({
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: kafkaBootstrapServers,
+      SCHEMA_REGISTRY_KAFKASTORE_SECURITY_PROTOCOL: 'PLAINTEXT',
+      SCHEMA_REGISTRY_LISTENERS: `http://0.0.0.0:${schemaRegistryPort}`,
+      SCHEMA_REGISTRY_HOST_NAME: schemaRegistryHost,
+    })
     .withExposedPorts(schemaRegistryPort)
-    .withEnvironment('SCHEMA_REGISTRY_HOST_NAME', schemaRegistryHost)
-    .withEnvironment(
-      'SCHEMA_REGISTRY_LISTENERS',
-      `http://0.0.0.0:${schemaRegistryPort}`,
-    )
-    .withEnvironment(
-      'SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS',
-      kafkaBootstrapServers,
-    )
     .withWaitStrategy(
       Wait.forHttp('/subjects', schemaRegistryPort).forStatusCode(200),
     )
