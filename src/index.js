@@ -85,21 +85,24 @@ class KafkaClient {
     this.#groupId = config.groupId || 'default-group-id';
     this.#brokers = config.brokers || ['localhost:9092'];
     this.#avroSchemaRegistry = config.avroSchemaRegistry || 'http://localhost:8081';
-    
+
     this.#producer = new Producer({
       'client.id': this.#clientId,
       'metadata.broker.list': this.#brokers.join(','),
       dr_cb: false,
     });
-    
-    this.#consumer = new KafkaConsumer({
-      'group.id': this.#groupId,
-      'client.id': this.#clientId,
-      'metadata.broker.list': this.#brokers.join(','),
-      'enable.auto.commit': true,
-      'auto.commit.interval.ms': 1000,
-    }, {});
-    
+
+    this.#consumer = new KafkaConsumer(
+      {
+        'group.id': this.#groupId,
+        'client.id': this.#clientId,
+        'metadata.broker.list': this.#brokers.join(','),
+        'enable.auto.commit': true,
+        'auto.commit.interval.ms': 1000,
+      },
+      {},
+    );
+
     this.#registry = new SchemaRegistry({ host: this.#avroSchemaRegistry });
   }
 
@@ -113,9 +116,11 @@ class KafkaClient {
         return new Promise((resolve, reject) => {
           this.#producer.connect();
 
-          this.#isProducerConnected = true;
-          console.log('Kafka producer successfully connected');
-          resolve();
+          this.#producer.once('ready', () => {
+            this.#isProducerConnected = true;
+            console.log('Kafka producer successfully connected');
+            resolve();
+          });
 
           this.#producer.once('event.error', (err) => {
             this.#isProducerConnected = false;
@@ -164,7 +169,7 @@ class KafkaClient {
   async #initProducer() {
     try {
       if (!this.#isProducerConnected) {
-        console.warn('Kafka producer is not connected. Retrying...');
+        console.log('Kafka producer is not connected. Connecting producer');
         await this.#connectProducer();
       }
     } catch (error) {
@@ -179,11 +184,11 @@ class KafkaClient {
   async #initConsumer() {
     try {
       if (!this.#isConsumerConnected) {
-        console.warn('Kafka consumer is not connected. Retrying...');
+        console.warn('Kafka consumer is not connected. Connecting consumer');
         await this.#connectConsumer();
       }
     } catch (error) {
-      throw new Error(`Error initializing producer: ${error}`);
+      throw new Error(`Error initializing consumer: ${error}`);
     }
   }
 
@@ -263,7 +268,7 @@ class KafkaClient {
         });
       } else {
         console.error('Major issue with the kafka consumer init process.');
-        throw new Error('Unable to initialize kafka producer');
+        throw new Error('Unable to initialize kafka consumer');
       }
     } catch (error) {
       console.error(
