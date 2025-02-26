@@ -28,8 +28,9 @@ jobs:
           - 9092:9092
         env:
           KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-          KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT://localhost:9092
-          KAFKA_LISTENER_SECURITY_PROTOCOL: PLAINTEXT
+          KAFKA_ADVERTISED_LISTENERS: PLAINTEXT_INTERNAL://kafka:29092,PLAINTEXT_EXTERNAL://localhost:9092
+          KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT_INTERNAL:PLAINTEXT,PLAINTEXT_EXTERNAL:PLAINTEXT
+          KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT_INTERNAL
           KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
         options: --health-cmd="kafka-topics --bootstrap-server localhost:9092 --list || exit 1" --health-interval=10s --health-timeout=5s --health-retries=5    
 
@@ -38,7 +39,7 @@ jobs:
         ports:
           - 8081:8081
         env:
-          SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: PLAINTEXT://kafka:29092
+          SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: PLAINTEXT_INTERNAL://kafka:29092
           SCHEMA_REGISTRY_HOST_NAME: schema-registry
           SCHEMA_REGISTRY_KAFKASTORE_CONNECTION_URL: zookeeper:2181
         options: --health-cmd="curl -s http://localhost:8081/subjects" --health-interval=10s --health-timeout=5s --health-retries=3
