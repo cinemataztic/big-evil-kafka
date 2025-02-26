@@ -9,7 +9,9 @@ beforeAll(async () => {
   kafkaClient = new KafkaClient({
     clientId: 'ctz-client',
     groupId: 'ctz-group',
-    brokers: process.env.KAFKA_BROKERS,
+    brokers: process.env.KAFKA_BROKERS
+      ? process.env.KAFKA_BROKERS.split(',')
+      : ['localhost:9092'],
   });
   logSpy = jest.spyOn(console, 'log').mockImplementation();
 });
