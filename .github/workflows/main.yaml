@@ -27,11 +27,7 @@ jobs:
           KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092,PLAINTEXT://kafka:9092
           KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT
           KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-        options: >
-          --health-cmd="kafka-topics --bootstrap-server kafka:9092 --list || exit 1" 
-          --health-interval=10s 
-          --health-timeout=5s 
-          --health-retries=5
+        options: --health-cmd="kafka-topics --bootstrap-server kafka:9092 --list || exit 1" --health-interval=10s --health-timeout=5s --health-retries=5  
 
       schema-registry:
         image: confluentinc/cp-schema-registry:latest
@@ -41,11 +37,7 @@ jobs:
           SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: PLAINTEXT://kafka:9092
           SCHEMA_REGISTRY_HOST_NAME: schema-registry
           SCHEMA_REGISTRY_KAFKASTORE_CONNECTION_URL: zookeeper:2181
-        options: >
-          --health-cmd="curl -s http://localhost:8081/subjects" 
-          --health-interval=10s 
-          --health-timeout=5s 
-          --health-retries=3
+        options: --health-cmd="curl -s http://localhost:8081/subjects" --health-interval=10s --health-timeout=5s --health-retries=3  
 
     steps:
       - uses: actions/checkout@v3
@@ -57,7 +49,7 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Deploy 'cinemataztic-value' Avro schema to Schema Registry
+      - name: Deploy 'cinemataztic-value' avro schema to Schema registry
         run: |
           echo '{
             "schema": "{\"type\":\"record\",\"name\":\"HelloCinemataztic\",\"fields\":[{\"name\":\"message\",\"type\":\"string\"}]}"
