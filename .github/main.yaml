@@ -8,10 +8,6 @@ on:
   pull_request:
 
 env:
-  JWT_SIGNATURE_TYPE: "asymmetric"
-  JWKS_URI: "http://auth.iam.svc.cluster.local/.well-known/jwks.json"
-  CLOUD_BUCKET: "placeholder"
-  GAME_RESOURCES_BUCKET: "placeholder"
   KAFKA_BROKERS: localhost:9092
 
 jobs:

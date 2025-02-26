@@ -8,7 +8,6 @@ const values = {
 const config = {
   clientId: 'ctz-client',
   groupId: 'ctz-group',
-  brokers: [`${values.kafka.host}:${values.kafka.port}`],
 };
 
 const avroSchema = {
