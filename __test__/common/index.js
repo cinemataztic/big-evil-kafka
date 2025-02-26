@@ -1,7 +1,3 @@
-const constats = {
-  TOPIC: 'cinemataztic',
-};
-
 const values = {
   topic: 'cinemataztic',
   zookeeper: { host: 'zookeeper', port: 2181 },
@@ -12,7 +8,7 @@ const values = {
 const config = {
   clientId: 'ctz-client',
   groupId: 'ctz-group',
-  brokers: ['kafka:9092'],
+  brokers: [`${values.kafka.host}:${values.kafka.port}`],
 };
 
 const avroSchema = {
@@ -23,4 +19,4 @@ const avroSchema = {
   }),
 };
 
-module.exports = { constats, values, config, avroSchema };
+module.exports = { values, config, avroSchema };

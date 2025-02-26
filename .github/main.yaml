@@ -1,0 +1,71 @@
+# This workflow will do a clean installation of node dependencies, cache/restore them, build the source code and run tests across different versions of node
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-nodejs
+
+name: Node.js CI
+
+on:
+  push:
+  pull_request:
+
+env:
+  JWT_SIGNATURE_TYPE: "asymmetric"
+  JWKS_URI: "http://auth.iam.svc.cluster.local/.well-known/jwks.json"
+  CLOUD_BUCKET: "placeholder"
+  GAME_RESOURCES_BUCKET: "placeholder"
+  KAFKA_BROKERS: localhost:9092
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      zookeeper:
+        image: confluentinc/cp-zookeeper:latest
+        ports:
+          - 2181:2181
+        env:
+          ZOOKEEPER_CLIENT_PORT: 2181
+
+      kafka:
+        image: confluentinc/cp-kafka:latest
+        ports:
+          - 9092:9092
+        env:
+          KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+          KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+          KAFKA_LISTENER_SECURITY_PROTOCOL: PLAINTEXT
+          KAFKA_LISTENER_NAME_INTERNAL: INTERNAL
+          KAFKA_LISTENER_INTERNAL_HOST: kafka
+          KAFKA_LISTENER_INTERNAL_PORT: 9092
+          KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+
+      schema-registry:
+        image: confluentinc/cp-schema-registry:latest
+        ports:
+          - 8081:8081
+        env:
+          SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: PLAINTEXT://kafka:9092
+          SCHEMA_REGISTRY_HOST_NAME: schema-registry
+          SCHEMA_REGISTRY_KAFKASTORE_CONNECTION_URL: zookeeper:2181
+        options: --health-cmd="curl -s http://localhost:8081/subjects" --health-interval=10s --health-timeout=5s --health-retries=3
+
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@master
+        with:
+          node-version: 20.14.0
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Deploy 'show-audience' avro schema to schema-registry service
+        run: |
+          echo '{
+            "schema": "{\"type\":\"record\",\"name\":\"HelloCinemataztic\",\"fields\":[{\"name\":\"message\",\"type\":\"string\"}]}"
+          }' > schema.json
+
+          echo "Deploying 'show-audience' avro schema to schema-registry"
+          curl -X POST -H "Content-Type: application/vnd.schemaregistry.v1+json" --data @schema.json http://localhost:8081/subjects/show-audience-value/versions
+
+      - name: Run tests
+        run: npm run test:ci --if-present
