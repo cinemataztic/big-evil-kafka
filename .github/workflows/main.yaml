@@ -61,7 +61,7 @@ jobs:
           }' > schema.json
 
           echo "Deploying 'show-audience' avro schema to schema-registry"
-          curl -X POST -H "Content-Type: application/vnd.schemaregistry.v1+json" --data @schema.json http://localhost:8081/subjects/show-audience-value/versions
+          curl -X POST -H "Content-Type: application/vnd.schemaregistry.v1+json" --data @schema.json http://localhost:8081/subjects/cinemataztic-value/versions
 
       - name: Run tests
         run: npm run test:ci --if-present
