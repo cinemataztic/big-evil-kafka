@@ -28,10 +28,6 @@ jobs:
         env:
           KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
           KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
-          KAFKA_LISTENER_SECURITY_PROTOCOL: PLAINTEXT
-          KAFKA_LISTENER_NAME_INTERNAL: INTERNAL
-          KAFKA_LISTENER_INTERNAL_HOST: kafka
-          KAFKA_LISTENER_INTERNAL_PORT: 9092
           KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
         options: --health-cmd="kafka-topics --bootstrap-server kafka:9092 --list || exit 1" --health-interval=10s --health-timeout=5s --health-retries=5    
 
