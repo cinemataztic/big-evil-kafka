@@ -9,6 +9,7 @@ beforeAll(async () => {
   kafkaClient = new KafkaClient({
     clientId: 'ctz-client',
     groupId: 'ctz-group',
+    brokers: process.env.KAFKA_BROKERS,
   });
   logSpy = jest.spyOn(console, 'log').mockImplementation();
 });
@@ -38,22 +39,19 @@ describe('Kafka Client Integration test', () => {
     expect(logSpy).toHaveBeenCalledWith(
       'Kafka consumer successfully connected',
     );
+  });
+  test('should log message when consumer receives a message', async () => {
+    await kafkaClient.sendMessage(topic, { message: 'Hello Cinemataztic' });
+    await kafkaClient.consumeMessage(topic, (data) =>
+      console.log('data', data),
+    );
+
     expect(logSpy).toHaveBeenCalledWith(`Subscribed to topic ${topic}`);
 
     expect(logSpy).toHaveBeenCalledWith(
       `Message received by consumer on topic: ${topic}`,
     );
   });
-  // test('should log message when consumer receives a message', async () => {
-  //   await kafkaClient.sendMessage(topic, { message: 'Hello Cinemataztic' });
-  //   await kafkaClient.consumeMessage(topic, (data) =>
-  //     console.log('data', data),
-  //   );
-
-  //   expect(logSpy).toHaveBeenCalledWith(
-  //     `Message received by consumer on topic: ${topic}`,
-  //   );
-  // });
 });
 
 afterAll(async () => {
