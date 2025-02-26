@@ -5,6 +5,9 @@ const topic = 'cinemataztic';
 let kafkaClient;
 let logSpy;
 
+jest.spyOn(global, 'setInterval').mockImplementation(jest.fn());
+jest.spyOn(global, 'clearInterval').mockImplementation(jest.fn());
+
 beforeAll(async () => {
   kafkaClient = new KafkaClient({
     clientId: 'ctz-client',
