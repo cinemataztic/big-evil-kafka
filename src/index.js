@@ -287,7 +287,7 @@ class KafkaClient {
    * Disconnects node-rdkafka client's producer and removes all associated listeners if any.
    * @public
    */
-  async disconnectProducer() {
+  disconnectProducer() {
     try {
       if (this.#isProducerConnected) {
         this.#producer.disconnect();
@@ -306,7 +306,7 @@ class KafkaClient {
    * Disconnects node-rdkafka client's consumer and removes all associated listeners if any.
    * @public
    */
-  async disconnectConsumer() {
+  disconnectConsumer() {
     try {
       if (this.#isConsumerConnected) {
         this.#consumer.disconnect();

@@ -54,13 +54,13 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Deploy 'show-audience' avro schema to schema-registry service
+      - name: Deploy 'cinemataztic-value' avro schema to schema-registry service
         run: |
           echo '{
             "schema": "{\"type\":\"record\",\"name\":\"HelloCinemataztic\",\"fields\":[{\"name\":\"message\",\"type\":\"string\"}]}"
           }' > schema.json
 
-          echo "Deploying 'show-audience' avro schema to schema-registry"
+          echo "Deploying 'cinemataztic-value' avro schema to schema-registry"
           curl -X POST -H "Content-Type: application/vnd.schemaregistry.v1+json" --data @schema.json http://localhost:8081/subjects/cinemataztic-value/versions
 
       - name: Run tests

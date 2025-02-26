@@ -1,13 +1,15 @@
 const { KafkaClient } = require('../src');
-const { values, config } = require('./common');
 
-const { topic } = values;
+const topic = 'cinemataztic';
 
 let kafkaClient;
 let logSpy;
 
 beforeAll(async () => {
-  kafkaClient = new KafkaClient(config);
+  kafkaClient = new KafkaClient({
+    clientId: 'ctz-client',
+    groupId: 'ctz-group',
+  });
   logSpy = jest.spyOn(console, 'log').mockImplementation();
 });
 
@@ -41,8 +43,8 @@ describe('Kafka Client Integration test', () => {
   test('should log message when consumer receives a message', async () => {});
 });
 
-afterAll(async () => {
-  await kafkaClient.disconnectProducer();
-  await kafkaClient.disconnectConsumer();
+afterAll(() => {
+  kafkaClient.disconnectProducer();
+  kafkaClient.disconnectConsumer();
   logSpy.mockRestore();
 });
