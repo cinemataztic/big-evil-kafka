@@ -125,7 +125,13 @@ class KafkaClient {
 
           this.#producer.once('event.error', (err) => {
             this.#isProducerConnected = false;
-            console.error(`Kafka producer connection error: ${err.message}`);
+            console.error(`Kafka producer connection error: ${err}`);
+            reject(err);
+          });
+
+          this.#producer.once('connection.failure', (err) => {
+            this.#isProducerConnected = false;
+            console.error(`Kafka producer connection resulted in failure: ${err}`);
             reject(err);
           });
         }, retryOptions);
@@ -153,7 +159,13 @@ class KafkaClient {
 
           this.#consumer.once('event.error', (err) => {
             this.#isConsumerConnected = false;
-            console.error(`Kafka consumer connection error: ${err.message}`);
+            console.error(`Kafka consumer connection error: ${err}`);
+            reject(err);
+          });
+
+          this.#consumer.once('connection.failure', (err) => {
+            this.#isConsumerConnected = false;
+            console.error(`Kafka consumer connection resulted in failure: ${err}`);
             reject(err);
           });
         }, retryOptions);
@@ -287,14 +299,19 @@ class KafkaClient {
    * Disconnects node-rdkafka client's producer and removes all associated listeners if any.
    * @public
    */
-  disconnectProducer() {
+  async disconnectProducer() {
     try {
       if (this.#isProducerConnected) {
-        this.#producer.disconnect();
-        this.#producer.removeAllListeners();
-        this.#isProducerConnected = false;
+        return new Promise((resolve) => {
+          this.#producer.disconnect();
 
-        console.log('Successfully disconnected Kafka producer');
+          this.#producer.once('disconnected', () => {
+            this.#isProducerConnected = false;
+
+            console.log('Successfully disconnected Kafka producer');
+            resolve();
+          });
+        });
       }
     } catch (error) {
       console.error(`Error disconnecting Kafka producer: ${error}`);
@@ -306,16 +323,22 @@ class KafkaClient {
    * Disconnects node-rdkafka client's consumer and removes all associated listeners if any.
    * @public
    */
-  disconnectConsumer() {
+  async disconnectConsumer() {
     try {
       if (this.#isConsumerConnected) {
-        this.#consumer.disconnect();
-        this.#consumer.removeAllListeners();
-        this.#isConsumerConnected = false;
+        return new Promise((resolve) => {
+          this.#consumer.disconnect();
 
-        clearInterval(this.#intervalId);
-        this.#intervalId = null;
-        console.log('Successfully disconnected Kafka consumer');
+          this.#consumer.once('disconnected', () => {
+            this.#isConsumerConnected = false;
+
+            clearInterval(this.#intervalId);
+            this.#intervalId = null;
+
+            console.log('Successfully disconnected Kafka consumer');
+            resolve();
+          });
+        });
       }
     } catch (error) {
       console.error(`Error disconnecting Kafka consumer: ${error}`);

@@ -40,11 +40,20 @@ describe('Kafka Client Integration test', () => {
     );
     expect(logSpy).toHaveBeenCalledWith(`Subscribed to topic ${topic}`);
   });
-  test('should log message when consumer receives a message', async () => {});
+  test('should log message when consumer receives a message', async () => {
+    await kafkaClient.sendMessage(topic, { message: 'Hello Cinemataztic' });
+    await kafkaClient.consumeMessage(topic, (data) =>
+      console.log('data', data),
+    );
+
+    expect(logSpy).toHaveBeenCalledWith(
+      `Message received by consumer on topic: ${topic}`,
+    );
+  });
 });
 
-afterAll(() => {
-  kafkaClient.disconnectProducer();
-  kafkaClient.disconnectConsumer();
+afterAll(async () => {
   logSpy.mockRestore();
+  await kafkaClient.disconnectProducer();
+  await kafkaClient.disconnectConsumer();
 });
