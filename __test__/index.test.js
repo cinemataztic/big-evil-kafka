@@ -36,22 +36,20 @@ describe('Kafka Client Integration test', () => {
       `Successfully published data to topic: ${topic}`,
     );
   });
-  test('should log message when consumer is connected', async () => {
+  test.only('should log message when consumer is connected', async () => {
     await kafkaClient.sendMessage(topic, { message: 'Hello Cinemataztic' });
-    await kafkaClient.consumeMessage(topic, (data) =>
-      console.log('data', data),
-    );
+    await kafkaClient.consumeMessage(topic, () => {});
     expect(logSpy).toHaveBeenCalledWith(
       'Kafka consumer successfully connected',
     );
   });
   test('should log message when consumer receives a message', async () => {
     await kafkaClient.sendMessage(topic, { message: 'Hello Cinemataztic' });
-    await kafkaClient.consumeMessage(topic, (data) =>
-      console.log('data', data),
-    );
+    await kafkaClient.consumeMessage(topic, () => {});
 
     expect(logSpy).toHaveBeenCalledWith(`Subscribed to topic ${topic}`);
+
+    expect(logSpy).toHaveBeenCalledWith(`Message received by consumer on topic: ${topic}`);
   });
 });
 
