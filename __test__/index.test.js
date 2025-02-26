@@ -49,6 +49,10 @@ describe('Kafka Client Integration test', () => {
       console.log('value', value);
       expect(value).toHaveProperty('message');
     });
+
+    expect(logSpy).toHaveBeenCalledWith(
+      `Message received by consumer on topic: ${topic}`,
+    );
   });
 });
 
