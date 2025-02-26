@@ -157,11 +157,11 @@ class KafkaClient {
             resolve();
           });
 
-          // this.#consumer.once('event.error', (err) => {
-          //   this.#isConsumerConnected = false;
-          //   console.error(`Kafka consumer connection error: ${err}`);
-          //   reject(err);
-          // });
+          this.#consumer.once('event.error', (err) => {
+            this.#isConsumerConnected = false;
+            console.error(`Kafka consumer connection error: ${err}`);
+            reject(err);
+          });
 
           this.#consumer.once('connection.failure', (err) => {
             this.#isConsumerConnected = false;
@@ -268,6 +268,7 @@ class KafkaClient {
 
         this.#consumer.on('data', async (data) => {
           try {
+            console.log('data', data.value.toString())
             const decodedValue = await this.#registry.decode(data.value);
 
             console.log(`Message received by consumer on topic: ${topic}`);
