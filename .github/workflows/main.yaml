@@ -33,6 +33,7 @@ jobs:
           KAFKA_LISTENER_INTERNAL_HOST: kafka
           KAFKA_LISTENER_INTERNAL_PORT: 9092
           KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+        options: --health-cmd="kafka-topics --bootstrap-server kafka:9092 --list || exit 1" --health-interval=10s --health-timeout=5s --health-retries=5    
 
       schema-registry:
         image: confluentinc/cp-schema-registry:latest
