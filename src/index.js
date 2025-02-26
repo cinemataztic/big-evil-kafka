@@ -268,7 +268,7 @@ class KafkaClient {
 
         this.#consumer.on('data', async (data) => {
           try {
-            console.log('data', data.value.toString())
+            console.error('data', data.value.toString())
             const decodedValue = await this.#registry.decode(data.value);
 
             console.log(`Message received by consumer on topic: ${topic}`);
