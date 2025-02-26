@@ -131,7 +131,9 @@ class KafkaClient {
 
           this.#producer.once('connection.failure', (err) => {
             this.#isProducerConnected = false;
-            console.error(`Kafka producer connection resulted in failure: ${err}`);
+            console.error(
+              `Kafka producer connection resulted in failure: ${err}`,
+            );
             reject(err);
           });
         }, retryOptions);
@@ -165,7 +167,9 @@ class KafkaClient {
 
           this.#consumer.once('connection.failure', (err) => {
             this.#isConsumerConnected = false;
-            console.error(`Kafka consumer connection resulted in failure: ${err}`);
+            console.error(
+              `Kafka consumer connection resulted in failure: ${err}`,
+            );
             reject(err);
           });
         }, retryOptions);
@@ -268,7 +272,6 @@ class KafkaClient {
 
         this.#consumer.on('data', async (data) => {
           try {
-            console.error('data', data.value.toString())
             const decodedValue = await this.#registry.decode(data.value);
 
             console.log(`Message received by consumer on topic: ${topic}`);

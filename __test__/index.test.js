@@ -52,8 +52,6 @@ describe('Kafka Client Integration test', () => {
     );
 
     expect(logSpy).toHaveBeenCalledWith(`Subscribed to topic ${topic}`);
-
-    expect(logSpy).toHaveBeenCalledWith('data');
   });
 });
 
