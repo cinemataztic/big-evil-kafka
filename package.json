@@ -4,7 +4,7 @@
   "description": "A wrapper around node-rdkafka",
   "main": "src/index.js",
   "scripts": {
-    "test:ci": "cross-env NODE_ENV=test jest --ignoreProjects system --testTimeout=15000 --detectOpenHandles --forceExit"
+    "test:ci": "cross-env NODE_ENV=test jest --ignoreProjects system --testTimeout=15000 --detectOpenHandles --forceExit --silent=false"
   },
   "keywords": [
     "kafka"
