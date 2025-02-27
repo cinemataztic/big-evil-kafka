@@ -48,18 +48,20 @@ describe('Kafka consumer integration tests', () => {
   });
 
   test('should log message when consumer receives a message', async () => {
-    await kafkaClient.consumeMessage(topic, (data) => {
-      console.log(`Message received by consumer on topic: ${topic}`);
+    // Create a promise that resolves when the consumer callback is invoked.
+    const messageReceived = new Promise((resolve) => {
+      kafkaClient.consumeMessage(topic, (data) => {
+        // Log the expected message when data is received.
+        console.log(`Message received by consumer on topic: ${topic}`);
+        resolve();
+      });
     });
-
-    // Wait for consumer to connect and subscribe.
-    await new Promise((resolve) => setTimeout(resolve, 2000));
 
     // Send a message after consumer is ready.
     await kafkaClient.sendMessage(topic, { message: 'Hello Cinemataztic' });
 
-    // Wait longer for the polling (via setInterval) to pick up the message.
-    await new Promise((resolve) => setTimeout(resolve, 8000));
+    // Wait until the consumer callback logs the message.
+    await messageReceived;
 
     // Debug: log captured calls to see what's been logged.
     console.log('Captured log calls:', logSpy.mock.calls);
