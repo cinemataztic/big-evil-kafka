@@ -52,10 +52,9 @@ describe('Kafka consumer integration tests', () => {
   test.only('should log message when consumer receives a message', async () => {
     await kafkaClient.consumeMessage(topic, (data) => {});
 
-    jest.advanceTimersByTime(5000);
+    jest.advanceTimersByTime(1000);
 
-    // If your Kafka library uses promises, wait for them to flush.
-    await Promise.resolve();
+    await new Promise((resolve) => setTimeout(resolve, 5000));
 
     // Debug: log captured calls to see what's been logged.
     console.log('Captured log calls:', logSpy.mock.calls);
