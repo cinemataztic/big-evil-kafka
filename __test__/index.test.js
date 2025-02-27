@@ -38,7 +38,6 @@ describe('Kafka producer integration tests', () => {
 describe('Kafka consumer integration tests', () => {
   beforeEach(async () => {
     await kafkaClient.sendMessage(topic, { message: 'Hello Cinemataztic' });
-    jest.useFakeTimers();
     jest.clearAllMocks();
   });
 
@@ -52,9 +51,7 @@ describe('Kafka consumer integration tests', () => {
   test('should log message when consumer receives a message', async () => {
     await kafkaClient.consumeMessage(topic, (data) => {});
 
-    jest.advanceTimersByTime(1000);
-    jest.advanceTimersByTime(1000);
-    jest.advanceTimersByTime(1000);
+    await new Promise((resolve) => setTimeout(resolve, 4000));
 
     // Debug: log captured calls to see what's been logged.
     console.log('Captured log calls:', logSpy.mock.calls);
