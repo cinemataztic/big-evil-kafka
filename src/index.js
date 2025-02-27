@@ -101,7 +101,9 @@ class KafkaClient {
         'enable.auto.commit': true,
         'auto.commit.interval.ms': 1000,
       },
-      {},
+      {
+        'auto.offset.reset': 'earliest'
+      },
     );
 
     this.#registry = new SchemaRegistry({ host: this.#avroSchemaRegistry });
@@ -267,10 +269,9 @@ class KafkaClient {
         if (!this.#intervalId) {
           this.#intervalId = setInterval(() => {
             this.#consumer.consume(10);
+            console.log('Reading 10 messages every 1000 milliseconds in the interval.');
           }, 1000);
         }
-
-        console.log('Reading 10 messages every 1000 milliseconds.');
 
         this.#consumer.on('data', async (data) => {
           try {
