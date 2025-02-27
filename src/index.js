@@ -117,6 +117,11 @@ class KafkaClient {
     try {
       await backOff(() => {
         return new Promise((resolve, reject) => {
+          // Remove any previously attached listeners for these events
+          this.#producer.removeAllListeners('ready');
+          this.#producer.removeAllListeners('event.error');
+          this.#producer.removeAllListeners('connection.failure');
+
           this.#producer.connect();
 
           this.#producer.once('ready', () => {
@@ -153,6 +158,11 @@ class KafkaClient {
     try {
       await backOff(() => {
         return new Promise((resolve, reject) => {
+          // Remove any previously attached listeners for these events
+          this.#consumer.removeAllListeners('ready');
+          this.#consumer.removeAllListeners('event.error');
+          this.#consumer.removeAllListeners('connection.failure');
+
           this.#consumer.connect();
 
           this.#consumer.once('ready', () => {
