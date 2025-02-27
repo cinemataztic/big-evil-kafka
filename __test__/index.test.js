@@ -47,6 +47,8 @@ describe('Kafka Client Integration test', () => {
     await kafkaClient.sendMessage(topic, { message: 'Hello Cinemataztic' });
     await kafkaClient.consumeMessage(topic, (data) => {});
 
+    console.log(logSpy.mock.calls);
+
     expect(logSpy).toHaveBeenCalledWith(
       `Message received by consumer on topic: ${topic}`,
     );
