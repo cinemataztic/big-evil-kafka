@@ -313,6 +313,7 @@ class KafkaClient {
 
           this.#producer.once('disconnected', () => {
             this.#isProducerConnected = false;
+            this.#isProducerConnected.removeAllListeners();
 
             console.log('Successfully disconnected Kafka producer');
             resolve();
@@ -337,6 +338,7 @@ class KafkaClient {
 
           this.#consumer.once('disconnected', () => {
             this.#isConsumerConnected = false;
+            this.#isConsumerConnected.removeAllListeners();
 
             clearInterval(this.#intervalId);
             this.#intervalId = null;
