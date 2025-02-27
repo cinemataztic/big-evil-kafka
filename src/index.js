@@ -266,12 +266,16 @@ class KafkaClient {
 
         if (!this.#intervalId) {
           this.#intervalId = setInterval(() => {
-            this.#consumer.consume(10); // Read 10 messages every 1000 milliseconds.
+            this.#consumer.consume(10);
           }, 1000);
         }
 
+        console.log('Reading 10 messages every 1000 milliseconds.');
+
         this.#consumer.on('data', async (data) => {
           try {
+            console.log('Data event is firing out with data', data.value.toString());
+
             const decodedValue = await this.#registry.decode(data.value);
 
             console.log(`Message received by consumer on topic: ${topic}`);
