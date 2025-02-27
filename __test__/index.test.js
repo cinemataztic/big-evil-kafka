@@ -49,7 +49,7 @@ describe('Kafka consumer integration tests', () => {
     );
   });
 
-  test.only('should log message when consumer receives a message', async () => {
+  test('should log message when consumer receives a message', async () => {
     await kafkaClient.consumeMessage(topic, (data) => {});
 
     jest.advanceTimersByTime(1000);
