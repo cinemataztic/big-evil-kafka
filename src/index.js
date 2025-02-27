@@ -63,12 +63,6 @@ class KafkaClient {
    * @private
    */
   #isConsumerConnected;
-  /**
-   * The interval ID.
-   * @type {number | NodeJS.Timeout | null}
-   * @private
-   */
-  #intervalId;
 
   /**
    * Initialize Kafka Client
@@ -264,11 +258,7 @@ class KafkaClient {
         this.#consumer.subscribe([topic]);
         console.log(`Subscribed to topic ${topic}`);
 
-        if (!this.#intervalId) {
-          this.#intervalId = setInterval(() => {
-            this.#consumer.consume(10); // Read 10 messages every 1000 milliseconds.
-          }, 1000);
-        }
+        this.#consumer.consume();
 
         this.#consumer.on('data', async (data) => {
           try {
@@ -291,8 +281,6 @@ class KafkaClient {
       console.error(
         `Error occurred in consuming message from topic ${topic}: ${error}`,
       );
-      clearInterval(this.#intervalId);
-      this.#intervalId = null;
       throw new Error(
         `Error occurred in consuming message from topic ${topic}: ${error}`,
       );
@@ -335,10 +323,6 @@ class KafkaClient {
 
           this.#consumer.once('disconnected', () => {
             this.#isConsumerConnected = false;
-
-            clearInterval(this.#intervalId);
-            this.#intervalId = null;
-
             console.log('Successfully disconnected Kafka consumer');
             resolve();
           });
@@ -346,8 +330,6 @@ class KafkaClient {
       }
     } catch (error) {
       console.error(`Error disconnecting Kafka consumer: ${error}`);
-      clearInterval(this.#intervalId);
-      this.#intervalId = null;
       throw new Error(`Error disconnecting Kafka consumer: ${error}`);
     }
   }
