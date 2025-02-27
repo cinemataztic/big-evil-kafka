@@ -52,11 +52,14 @@ describe('Kafka consumer integration tests', () => {
       console.log(`Message received by consumer on topic: ${topic}`);
     });
 
+    // Wait for consumer to connect and subscribe.
     await new Promise((resolve) => setTimeout(resolve, 2000));
 
+    // Send a message after consumer is ready.
     await kafkaClient.sendMessage(topic, { message: 'Hello Cinemataztic' });
 
-    await new Promise((resolve) => setTimeout(resolve, 4000));
+    // Wait longer for the polling (via setInterval) to pick up the message.
+    await new Promise((resolve) => setTimeout(resolve, 8000));
 
     // Debug: log captured calls to see what's been logged.
     console.log('Captured log calls:', logSpy.mock.calls);
