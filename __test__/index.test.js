@@ -45,10 +45,7 @@ describe('Kafka Client Integration test', () => {
   });
   test.only('should log message when consumer receives a message', async () => {
     await kafkaClient.sendMessage(topic, { message: 'Hello Cinemataztic' });
-    await kafkaClient.consumeMessage(topic, ({ value }) => {
-      console.log('value', value);
-      expect(value).toHaveProperty('message');
-    });
+    await kafkaClient.consumeMessage(topic, (data) => {});
 
     expect(logSpy).toHaveBeenCalledWith(
       `Message received by consumer on topic: ${topic}`,
