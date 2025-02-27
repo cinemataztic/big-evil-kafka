@@ -37,7 +37,6 @@ describe('Kafka producer integration tests', () => {
 
 describe('Kafka consumer integration tests', () => {
   beforeEach(async () => {
-    await kafkaClient.sendMessage(topic, { message: 'Hello Cinemataztic' });
     jest.clearAllMocks();
   });
 
@@ -49,7 +48,13 @@ describe('Kafka consumer integration tests', () => {
   });
 
   test('should log message when consumer receives a message', async () => {
-    await kafkaClient.consumeMessage(topic, (data) => {});
+    await kafkaClient.consumeMessage(topic, (data) => {
+      console.log(`Message received by consumer on topic: ${topic}`);
+    });
+
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+
+    await kafkaClient.sendMessage(topic, { message: 'Hello Cinemataztic' });
 
     await new Promise((resolve) => setTimeout(resolve, 4000));
 
