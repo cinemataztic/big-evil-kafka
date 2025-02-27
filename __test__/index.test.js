@@ -5,9 +5,6 @@ const topic = 'cinemataztic';
 let kafkaClient;
 let logSpy;
 
-jest.spyOn(global, 'setInterval').mockImplementation(jest.fn());
-jest.spyOn(global, 'clearInterval').mockImplementation(jest.fn());
-
 beforeAll(async () => {
   kafkaClient = new KafkaClient({
     clientId: 'ctz-client',
@@ -19,9 +16,9 @@ beforeAll(async () => {
   logSpy = jest.spyOn(console, 'log').mockImplementation();
 });
 
-describe('Kafka Client Integration test', () => {
-  beforeEach(() => {
-    jest.clearAllMocks(); // Ensures clean logs between tests
+describe('Kafka producer integration tests', () => {
+  beforeEach(async () => {
+    jest.clearAllMocks();
   });
 
   test('should log message when producer is connected', async () => {
@@ -36,30 +33,34 @@ describe('Kafka Client Integration test', () => {
       `Successfully published data to topic: ${topic}`,
     );
   });
-  test('should log message when consumer is connected', async () => {
+});
+
+describe('Kafka consumer integration tests', () => {
+  beforeEach(async () => {
     await kafkaClient.sendMessage(topic, { message: 'Hello Cinemataztic' });
+    jest.useFakeTimers();
+    jest.clearAllMocks();
+  });
+
+  test('should log message when consumer is connected', async () => {
     await kafkaClient.consumeMessage(topic, () => {});
     expect(logSpy).toHaveBeenCalledWith(
       'Kafka consumer successfully connected',
     );
   });
+
   test.only('should log message when consumer receives a message', async () => {
     await kafkaClient.consumeMessage(topic, (data) => {});
 
-    // Wait for the consumer to be fully connected/subscribed
-    await new Promise((resolve) => setTimeout(resolve, 3000));
-
-    await kafkaClient.sendMessage(topic, { message: 'Hello Cinemataztic' });
-
-    // Wait a bit to ensure message processing happens
-    await new Promise((resolve) => setTimeout(resolve, 3000));
-
-    // Optionally print out the calls for debugging:
-    console.log('Log calls:', logSpy.mock.calls);
+    jest.advanceTimersByTime(1000);
 
     expect(logSpy).toHaveBeenCalledWith(
       `Message received by consumer on topic: ${topic}`,
     );
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
   });
 });
 
