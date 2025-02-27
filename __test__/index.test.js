@@ -53,8 +53,8 @@ describe('Kafka consumer integration tests', () => {
     await kafkaClient.consumeMessage(topic, (data) => {});
 
     jest.advanceTimersByTime(1000);
-
-    await new Promise((resolve) => setTimeout(resolve, 5000));
+    jest.advanceTimersByTime(1000);
+    jest.advanceTimersByTime(1000);
 
     // Debug: log captured calls to see what's been logged.
     console.log('Captured log calls:', logSpy.mock.calls);
