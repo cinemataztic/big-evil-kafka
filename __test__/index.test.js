@@ -44,10 +44,18 @@ describe('Kafka Client Integration test', () => {
     );
   });
   test.only('should log message when consumer receives a message', async () => {
-    await kafkaClient.sendMessage(topic, { message: 'Hello Cinemataztic' });
     await kafkaClient.consumeMessage(topic, (data) => {});
 
-    console.log(logSpy.mock.calls);
+    // Wait for the consumer to be fully connected/subscribed
+    await new Promise((resolve) => setTimeout(resolve, 3000));
+
+    await kafkaClient.sendMessage(topic, { message: 'Hello Cinemataztic' });
+
+    // Wait a bit to ensure message processing happens
+    await new Promise((resolve) => setTimeout(resolve, 3000));
+
+    // Optionally print out the calls for debugging:
+    console.log('Log calls:', logSpy.mock.calls);
 
     expect(logSpy).toHaveBeenCalledWith(
       `Message received by consumer on topic: ${topic}`,
