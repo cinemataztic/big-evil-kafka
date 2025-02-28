@@ -50,7 +50,8 @@ describe('Kafka consumer integration tests', () => {
   test('should log message when consumer receives a message', async () => {
     await kafkaClient.consumeMessage(topic, (data) => {
       console.log(`Message received by consumer on topic: ${topic}`);
-      expect(data).toContain('value', 'Hello Cinemataztic');
+      expect(data).toHaveProperty('value');
+      expect(data.value).toHaveProperty('message', 'Hello Cinemataztic');
     });
 
     // Wait for consumer to connect and subscribe.
