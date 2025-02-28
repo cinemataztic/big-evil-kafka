@@ -1,0 +1,8 @@
+{
+  "source": {
+    "include": ["src/utils/retryOptions.js", "src/index.js"]
+  },
+  "opts": {
+    "template": "node_modules/better-docs"
+  }
+}

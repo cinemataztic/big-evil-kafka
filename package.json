@@ -4,11 +4,22 @@
   "description": "A wrapper around node-rdkafka",
   "main": "src/index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test:ci": "cross-env NODE_ENV=test jest --ignoreProjects system --testTimeout=30000 --detectOpenHandles --forceExit --silent=false"
   },
   "keywords": [
     "kafka"
   ],
-  "author": "\"Cinemataztic\"",
-  "license": "ISC"
+  "author": "Cinemataztic",
+  "license": "ISC",
+  "dependencies": {
+    "@kafkajs/confluent-schema-registry": "^3.6.1",
+    "exponential-backoff": "^3.1.2",
+    "jsdoc": "^4.0.4",
+    "node-rdkafka": "^3.2.1"
+  },
+  "devDependencies": {
+    "cross-env": "^7.0.3",
+    "jest": "^29.7.0",
+    "prettier": "^3.5.1"
+  }
 }
