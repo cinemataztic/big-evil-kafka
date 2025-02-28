@@ -10,9 +10,6 @@ on:
 jobs:
   publish-npm:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-node@master
@@ -21,6 +18,6 @@ jobs:
           registry-url: https://registry.npmjs.org/
           scope: "@cinemataztic"
       - run: npm ci
-      - run: npm publish --provenance --access public # For more information on --provenance see: https://docs.github.com/en/actions/use-cases-and-examples/publishing-packages/publishing-nodejs-packages#publishing-packages-to-the-npm-registry
+      - run: npm publish --access public 
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
