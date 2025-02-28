@@ -28,7 +28,7 @@ const { KafkaClient } = require('@cinemataztic/big-evil-kafka');
 
 Configurations must be passed to the KafkaClient in order to initialize node-rdkafka producer and consumer internally.
 
-brokers needs to be passed as a string i.e 'localhost:9092, kafka:29092'
+brokers needs to be passed as a string i.e `localhost:9092, kafka:29092`
 
 ```js
 const client = new KafkaClient({
@@ -49,7 +49,7 @@ client.sendMessage(topic, message);
 
 ## Consuming Messages
 
-The package uses non-flowing consumer mode with 'enable.auto.commit' enabled along with 'auto.offset.reset' set to earliest.
+The package uses non-flowing consumer mode with `enable.auto.commit` enabled along with 'auto.offset.reset' set to earliest.
 
 To consume a message from a topic, provide the topic name and a callback function that would return the message.
 
