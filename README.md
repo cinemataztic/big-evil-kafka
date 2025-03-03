@@ -75,6 +75,8 @@ client.sendMessage(topic, message);
 
 The package uses non-flowing consumer mode with `enable.auto.commit` enabled along with `auto.offset.reset` set to earliest.
 
+The messages are consumed at an interval of 1 second with 10 messages consumed at each interval. 
+
 To consume a message from a topic, provide the topic name and a callback function that would return the message.
 
 ```js
