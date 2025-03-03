@@ -28,7 +28,31 @@ const { KafkaClient } = require('@cinemataztic/big-evil-kafka');
 
 Configurations must be passed to the KafkaClient in order to initialize node-rdkafka producer and consumer internally.
 
-brokers needs to be passed as a string i.e `localhost:9092, kafka:29092`
+### `config`
+
+- `clientId?: string`
+
+  The unique identifier of both producer and consumer instance. It is meant as a label and is not to be confused with the group ID.
+
+  Default value is `default-client`.
+
+- `groupId?: string`
+
+  The unique identifier for a group of consumers that work together to consume messages from a set of Kafka topics.
+
+  Default value is `default-group-id`.
+
+- `brokers?: Array`
+
+  The list of brokers that specifies the Kafka broker(s), the producer and consumer should connect to. Brokers needs to be passed as an array i.e `['localhost:9092', 'kafka:29092']` because the package internally converts them to string as per the requirement for node-rdkafka that requires `metadata.broker.list` as a string.  
+
+  Default value is `['localhost:9092']`.
+
+- `avroSchemaRegistry?: string`
+
+  The schema registry URL which helps in encoding and decoding the messages according to a specific avro schema in a subject.
+
+  Default value is `http://localhost:8081`.
 
 ```js
 const client = new KafkaClient({
@@ -49,7 +73,9 @@ client.sendMessage(topic, message);
 
 ## Consuming Messages
 
-The package uses non-flowing consumer mode with `enable.auto.commit` enabled along with 'auto.offset.reset' set to earliest.
+The package uses non-flowing consumer mode with `enable.auto.commit` enabled along with `auto.offset.reset` set to earliest.
+
+The messages are consumed at an interval of 1 second with 10 messages consumed at each interval. 
 
 To consume a message from a topic, provide the topic name and a callback function that would return the message.
 

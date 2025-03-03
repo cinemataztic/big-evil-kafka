@@ -78,7 +78,7 @@ class KafkaClient {
    * @param {String} config.clientId The client identifier (default: 'default-client')
    * @param {String} config.groupId The client group id string. All clients sharing the same groupId belong to the same group (default: 'default-group-id')
    * @param {Array} config.brokers The initial list of brokers as a CSV list of broker host or host:port (default: ['localhost:9092'])
-   * @param {String} config.avroSchemaRegistry The schema registry host for deploying avro schemas (default: 'http://localhost:8081')
+   * @param {String} config.avroSchemaRegistry The schema registry host for encoding and decoding the messages as per the avro schemas wrt a subject (default: 'http://localhost:8081')
    */
   constructor(config = {}) {
     this.#clientId = config.clientId || 'default-client';
