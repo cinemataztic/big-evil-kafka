@@ -151,7 +151,7 @@ class KafkaClient {
         });
       }, retryOptions);
     } catch (error) {
-      throw new Error(error.message);
+      throw new Error(error);
     }
   }
 
@@ -197,7 +197,7 @@ class KafkaClient {
         });
       }, retryOptions);
     } catch (error) {
-      throw new Error(error.message);
+      throw new Error(error);
     }
   }
 
@@ -269,7 +269,7 @@ class KafkaClient {
         `Error occurred in sending message to topic ${topic}: ${error}`,
       );
       throw new Error(
-        `Error occurred in sending message to topic ${topic}: ${error.message}`,
+        `Error occurred in sending message to topic ${topic}: ${error}`,
       );
     }
   }
@@ -316,7 +316,7 @@ class KafkaClient {
       clearInterval(this.#intervalId);
       this.#intervalId = null;
       throw new Error(
-        `Error occurred in consuming message from topic ${topic}: ${error.message}`,
+        `Error occurred in consuming message from topic ${topic}: ${error}`,
       );
     }
   }
@@ -342,7 +342,7 @@ class KafkaClient {
       }
     } catch (error) {
       console.error(`Error disconnecting Kafka producer: ${error}`);
-      throw new Error(`Error disconnecting Kafka producer: ${error.message}`);
+      throw new Error(`Error disconnecting Kafka producer: ${error}`);
     }
   }
 
@@ -372,7 +372,7 @@ class KafkaClient {
       console.error(`Error disconnecting Kafka consumer: ${error}`);
       clearInterval(this.#intervalId);
       this.#intervalId = null;
-      throw new Error(`Error disconnecting Kafka consumer: ${error.message}`);
+      throw new Error(`Error disconnecting Kafka consumer: ${error}`);
     }
   }
 }
