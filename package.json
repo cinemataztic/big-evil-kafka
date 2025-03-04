@@ -11,6 +11,11 @@
     "kafka"
   ],
   "author": "Cinemataztic",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/cinemataztic/big-evil-kafka.git"
+  },
+  "homepage": "https://github.com/cinemataztic/big-evil-kafka",
   "license": "ISC",
   "dependencies": {
     "@kafkajs/confluent-schema-registry": "^3.6.1",
