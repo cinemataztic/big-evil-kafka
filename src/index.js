@@ -127,6 +127,11 @@ class KafkaClient {
           this.#producer.once('ready', () => {
             this.#isProducerConnected = true;
             console.log('Kafka producer successfully connected');
+
+            // Once producer is connected, remove error listeners to avoid handling late errors
+            this.#producer.removeAllListeners('event.error');
+            this.#producer.removeAllListeners('connection.failure');
+
             resolve();
           });
 
@@ -143,10 +148,10 @@ class KafkaClient {
             );
             reject(err);
           });
-        }, retryOptions);
-      });
+        });
+      }, retryOptions);
     } catch (error) {
-      throw new Error(`Error connecting to Kafka producer: ${error}`);
+      throw new Error(error);
     }
   }
 
@@ -168,6 +173,11 @@ class KafkaClient {
           this.#consumer.once('ready', () => {
             this.#isConsumerConnected = true;
             console.log('Kafka consumer successfully connected');
+
+            // Once consumer is connected, remove error listeners to avoid handling late errors
+            this.#consumer.removeAllListeners('event.error');
+            this.#consumer.removeAllListeners('connection.failure');
+
             resolve();
           });
 
@@ -184,10 +194,10 @@ class KafkaClient {
             );
             reject(err);
           });
-        }, retryOptions);
-      });
+        });
+      }, retryOptions);
     } catch (error) {
-      throw new Error(`Error connecting to Kafka consumer: ${error}`);
+      throw new Error(error);
     }
   }
 
@@ -202,7 +212,10 @@ class KafkaClient {
         await this.#connectProducer();
       }
     } catch (error) {
-      throw new Error(`Error initializing producer: ${error}`);
+      console.error(
+        `Error occurred connecting to Kafka producer: ${error.message}`,
+      );
+      process.exit(1);
     }
   }
 
@@ -217,7 +230,10 @@ class KafkaClient {
         await this.#connectConsumer();
       }
     } catch (error) {
-      throw new Error(`Error initializing consumer: ${error}`);
+      console.error(
+        `Error occurred connecting to Kafka consumer: ${error.message}`,
+      );
+      process.exit(1);
     }
   }
 
@@ -247,9 +263,6 @@ class KafkaClient {
         );
 
         console.log(`Successfully published data to topic: ${topic}`);
-      } else {
-        console.error('Major issue with the kafka producer init process.');
-        throw new Error('Unable to initialize kafka producer');
       }
     } catch (error) {
       console.error(
@@ -295,9 +308,6 @@ class KafkaClient {
             );
           }
         });
-      } else {
-        console.error('Major issue with the kafka consumer init process.');
-        throw new Error('Unable to initialize kafka consumer');
       }
     } catch (error) {
       console.error(

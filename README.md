@@ -1,8 +1,8 @@
 # Big Evil Kafka
 
-Wrapper package around [node-rdkafka](https://www.npmjs.com/package/node-rdkafka) where only the configuration is required, and the package can be used instantly with just the essentials. Dont be scared from the name, Kafka is cool and the name is a nod to the [Undertaker's](https://en.wikipedia.org/wiki/The_Undertaker) biker persona in the early 2000's.
+Wrapper package around [node-rdkafka](https://www.npmjs.com/package/node-rdkafka) where only the configuration is required, and the package can be used instantly with just the essentials. Don't be scared from the name, Kafka is cool and the name is a nod to the [Undertaker's](https://en.wikipedia.org/wiki/The_Undertaker) biker persona in the early 2000s.
 
-The purpose of this package is to provide a batteries included package where one does not have to worry about configuring the [node-rdkafka](https://www.npmjs.com/package/node-rdkafka) package for using kafka client's functions like sending a message to a topic and consuming a message to a topic. The package handles producer/consumer connection internally and only allows disconnecting both producer and consumer connection.
+The purpose of this package is to provide a battery-included package where one does not have to worry about configuring the [node-rdkafka](https://www.npmjs.com/package/node-rdkafka) package for using Kafka client's functions like sending a message to a topic and consuming a message from a topic. The package handles producer/consumer connection internally and only allows disconnecting both producer and consumer connection.
 
 ## Getting started
 
@@ -14,7 +14,7 @@ npm i @cinemataztic/big-evil-kafka
 
 ## Prerequisites
 
-This package uses [confluent-schema-registry](https://www.npmjs.com/package/@kafkajs/confluent-schema-registry) and assumes that schema registry is in place along with kafka server running in the background.
+This package uses [confluent-schema-registry](https://www.npmjs.com/package/@kafkajs/confluent-schema-registry) and assumes that the schema registry is in place along with the Kafka server running in the background.
 
 ## Usage
 
@@ -26,7 +26,7 @@ const { KafkaClient } = require('@cinemataztic/big-evil-kafka');
 
 ## Configuration
 
-Configurations must be passed to the KafkaClient in order to initialize node-rdkafka producer and consumer internally.
+Configurations must be passed to the KafkaClient to initialize node-rdkafka producer and consumer internally.
 
 ### `config`
 
@@ -44,13 +44,13 @@ Configurations must be passed to the KafkaClient in order to initialize node-rdk
 
 - `brokers?: Array`
 
-  The list of brokers that specifies the Kafka broker(s), the producer and consumer should connect to. Brokers needs to be passed as an array i.e `['localhost:9092', 'kafka:29092']` because the package internally converts them to string as per the requirement for node-rdkafka that requires `metadata.broker.list` as a string.  
+  The list of brokers that specifies the Kafka broker(s), the producer and consumer should connect to. Brokers need to be passed as an array, i.e, `['localhost:9092', 'kafka:29092']` because the package internally converts them to string as per the requirement for node-rdkafka that requires `metadata.broker.list` as a string.  
 
   Default value is `['localhost:9092']`.
 
 - `avroSchemaRegistry?: string`
 
-  The schema registry URL which helps in encoding and decoding the messages according to a specific avro schema in a subject.
+  The schema registry URL, which helps in encoding and decoding the messages according to a specific Avro schema in a subject.
 
   Default value is `http://localhost:8081`.
 
@@ -83,7 +83,7 @@ To consume a message from a topic, provide the topic name and a callback functio
 client.consumeMessage(topic, onMessage);
 ```
 
-## Disconnecting
+## Disconnection
 
 To disconnect either the producer or consumer, call the following methods for both producer and consumer respectively.
 ```js
@@ -95,6 +95,6 @@ client.disconnectConsumer();
 
 ## Motivation
 
-Many of our services are relying upon the kafka message queue system. The problem with using node-rdkafka in each of the different services is that in case of any change to kafka configuration, it had to be replicated across different services for consistency and also the manual setup and configuration of node-rdkafka is not simple and requires a lot of effort to set it up in a way that ensures maintainability. 
+Many of our services are relying upon the Kafka message queue system. The problem with using node-rdkafka in each of the different services is that in case of any change to kafka configuration, it had to be replicated across different services for consistency and also the manual setup and configuration of node-rdkafka is not simple and requires a lot of effort to set it up in a way that ensures maintainability. 
 
-Having a wrapper package around node-rdkafka enables us to not only utilize [exponential backoff](https://www.npmjs.com/package/exponential-backoff) for consumer/producer retry mechanism but also to provide a batteries included package that would simply allow users to send and consume messages and with additional ability to disconnect them in case of an error in the services. The user only needs to provide the configuration to use the package and can use the package without worrying about to set it up with respect to node-rdkafka connection and its methods that can be somewhat hard to implement if not well-versed in how node-rdkafka works.
+Having a wrapper package around node-rdkafka allows us to not only utilize [exponential backoff](https://www.npmjs.com/package/exponential-backoff) for consumer/producer retry mechanism but also to provide a batteries-included package that would simply allow users to send and consume messages, and with additional ability to disconnect them in case of an error in the services.
