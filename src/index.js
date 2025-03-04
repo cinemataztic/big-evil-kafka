@@ -127,6 +127,11 @@ class KafkaClient {
           this.#producer.once('ready', () => {
             this.#isProducerConnected = true;
             console.log('Kafka producer successfully connected');
+
+            // Once producer is connected, remove error listeners to avoid handling late errors
+            this.#producer.removeAllListeners('event.error');
+            this.#producer.removeAllListeners('connection.failure');
+
             resolve();
           });
 
@@ -143,10 +148,10 @@ class KafkaClient {
             );
             reject(err);
           });
-        }, retryOptions);
-      });
+        });
+      }, retryOptions);
     } catch (error) {
-      throw new Error(`Error connecting to Kafka producer: ${error}`);
+      throw new Error(error.message);
     }
   }
 
@@ -168,6 +173,11 @@ class KafkaClient {
           this.#consumer.once('ready', () => {
             this.#isConsumerConnected = true;
             console.log('Kafka consumer successfully connected');
+
+            // Once consumer is connected, remove error listeners to avoid handling late errors
+            this.#consumer.removeAllListeners('event.error');
+            this.#consumer.removeAllListeners('connection.failure');
+
             resolve();
           });
 
@@ -184,10 +194,10 @@ class KafkaClient {
             );
             reject(err);
           });
-        }, retryOptions);
-      });
+        });
+      }, retryOptions);
     } catch (error) {
-      throw new Error(`Error connecting to Kafka consumer: ${error}`);
+      throw new Error(error.message);
     }
   }
 
@@ -203,7 +213,7 @@ class KafkaClient {
       }
     } catch (error) {
       console.error(
-        `Error occurred in initializing producer after multiple retries: ${error}`,
+        `Error occurred connecting to Kafka producer: ${error.message}`,
       );
       process.exit(1);
     }
@@ -221,7 +231,7 @@ class KafkaClient {
       }
     } catch (error) {
       console.error(
-        `Error occurred in initializing consumer after multiple retries: ${error}`,
+        `Error occurred connecting to Kafka consumer: ${error.message}`,
       );
       process.exit(1);
     }
@@ -259,7 +269,7 @@ class KafkaClient {
         `Error occurred in sending message to topic ${topic}: ${error}`,
       );
       throw new Error(
-        `Error occurred in sending message to topic ${topic}: ${error}`,
+        `Error occurred in sending message to topic ${topic}: ${error.message}`,
       );
     }
   }
@@ -306,7 +316,7 @@ class KafkaClient {
       clearInterval(this.#intervalId);
       this.#intervalId = null;
       throw new Error(
-        `Error occurred in consuming message from topic ${topic}: ${error}`,
+        `Error occurred in consuming message from topic ${topic}: ${error.message}`,
       );
     }
   }
@@ -332,7 +342,7 @@ class KafkaClient {
       }
     } catch (error) {
       console.error(`Error disconnecting Kafka producer: ${error}`);
-      throw new Error(`Error disconnecting Kafka producer: ${error}`);
+      throw new Error(`Error disconnecting Kafka producer: ${error.message}`);
     }
   }
 
@@ -362,7 +372,7 @@ class KafkaClient {
       console.error(`Error disconnecting Kafka consumer: ${error}`);
       clearInterval(this.#intervalId);
       this.#intervalId = null;
-      throw new Error(`Error disconnecting Kafka consumer: ${error}`);
+      throw new Error(`Error disconnecting Kafka consumer: ${error.message}`);
     }
   }
 }

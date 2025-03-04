@@ -83,7 +83,7 @@ To consume a message from a topic, provide the topic name and a callback functio
 client.consumeMessage(topic, onMessage);
 ```
 
-## Disconnecting
+## Disconnection
 
 To disconnect either the producer or consumer, call the following methods for both producer and consumer respectively.
 ```js
