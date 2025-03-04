@@ -202,7 +202,10 @@ class KafkaClient {
         await this.#connectProducer();
       }
     } catch (error) {
-      throw new Error(`Error initializing producer: ${error}`);
+      console.error(
+        `Error occurred in initializing producer after multiple retries: ${error}`,
+      );
+      process.exit(1);
     }
   }
 
@@ -217,7 +220,10 @@ class KafkaClient {
         await this.#connectConsumer();
       }
     } catch (error) {
-      throw new Error(`Error initializing consumer: ${error}`);
+      console.error(
+        `Error occurred in initializing consumer after multiple retries: ${error}`,
+      );
+      process.exit(1);
     }
   }
 
@@ -247,9 +253,6 @@ class KafkaClient {
         );
 
         console.log(`Successfully published data to topic: ${topic}`);
-      } else {
-        console.error('Major issue with the kafka producer init process.');
-        throw new Error('Unable to initialize kafka producer');
       }
     } catch (error) {
       console.error(
@@ -295,9 +298,6 @@ class KafkaClient {
             );
           }
         });
-      } else {
-        console.error('Major issue with the kafka consumer init process.');
-        throw new Error('Unable to initialize kafka consumer');
       }
     } catch (error) {
       console.error(
