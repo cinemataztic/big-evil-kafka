@@ -75,13 +75,13 @@ class KafkaClient {
    * @constructor
    * @public
    * @param {Object} config The configuration object for kafka client initialization
-   * @param {String} config.clientId The client identifier (default: 'default-client')
+   * @param {String} config.clientId The client identifier (default: 'default-client-id')
    * @param {String} config.groupId The client group id string. All clients sharing the same groupId belong to the same group (default: 'default-group-id')
    * @param {Array} config.brokers The initial list of brokers as a CSV list of broker host or host:port (default: ['localhost:9092'])
    * @param {String} config.avroSchemaRegistry The schema registry host for encoding and decoding the messages as per the avro schemas wrt a subject (default: 'http://localhost:8081')
    */
   constructor(config = {}) {
-    this.#clientId = config.clientId || 'default-client';
+    this.#clientId = config.clientId || 'default-client-id';
     this.#groupId = config.groupId || 'default-group-id';
     this.#brokers = config.brokers || ['localhost:9092'];
     this.#avroSchemaRegistry =
@@ -251,8 +251,6 @@ class KafkaClient {
         const subject = `${topic}-value`;
         const id = await this.#registry.getRegistryId(subject, 'latest');
 
-        console.log(`Using schema ${topic}-value@latest (id: ${id})`);
-
         const encodedMessage = await this.#registry.encode(id, message);
 
         this.#producer.produce(
@@ -261,8 +259,6 @@ class KafkaClient {
           Buffer.from(encodedMessage),
           `${topic}-schema`, // Key
         );
-
-        console.log(`Successfully published data to topic: ${topic}`);
       }
     } catch (error) {
       console.error(
@@ -287,7 +283,6 @@ class KafkaClient {
 
       if (this.#isConsumerConnected) {
         this.#consumer.subscribe([topic]);
-        console.log(`Subscribed to topic ${topic}`);
 
         if (!this.#intervalId) {
           this.#intervalId = setInterval(() => {
@@ -298,8 +293,6 @@ class KafkaClient {
         this.#consumer.on('data', async (data) => {
           try {
             const decodedValue = await this.#registry.decode(data.value);
-
-            console.log(`Message received by consumer on topic: ${topic}`);
 
             onMessage({ value: decodedValue });
           } catch (error) {
