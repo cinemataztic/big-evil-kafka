@@ -65,24 +65,24 @@ const client = new KafkaClient({
 });
 ```
 
-## Sending Messages
+## Publishing to a Topic
 
-To send a message a topic, provide the topic name and the message. 
+To publish a message to a topic, provide the topic name and the message. 
 
 ```js
-client.sendMessage(topic, message);
+client.publishToTopic(topic, message);
 ```
 
-## Consuming Messages
+## Subscribing to a Topic
 
 The package uses non-flowing consumer mode with `enable.auto.commit` enabled along with `auto.offset.reset` set to earliest.
 
 The messages are consumed at an interval of 1 second with 10 messages consumed at each interval. 
 
-To consume a message from a topic, provide the topic name and a callback function that would return the message.
+To subscribe to a topic for consuming messages, provide the topic name and a callback function that would return the message.
 
 ```js
-client.consumeMessage(topic, onMessage);
+client.subscribeToTopic(topic, onMessage);
 ```
 
 ## Disconnection

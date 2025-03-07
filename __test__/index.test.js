@@ -22,21 +22,21 @@ describe('Kafka client integration tests', () => {
   });
 
   test('should log message when producer is connected', async () => {
-    await kafkaClient.sendMessage(topic, { message: 'Hello Cinemataztic' });
+    await kafkaClient.publishToTopic(topic, { message: 'Hello Cinemataztic' });
     expect(logSpy).toHaveBeenCalledWith(
       'Kafka producer successfully connected',
     );
   });
 
   test('should log message when consumer is connected', async () => {
-    await kafkaClient.consumeMessage(topic, () => {});
+    await kafkaClient.subscribeToTopic(topic, () => {});
     expect(logSpy).toHaveBeenCalledWith(
       'Kafka consumer successfully connected',
     );
   });
 
   test('should log message when consumer receives a message', async () => {
-    await kafkaClient.consumeMessage(topic, (data) => {
+    await kafkaClient.subscribeToTopic(topic, (data) => {
       expect(data).toHaveProperty('value');
       expect(data.value).toHaveProperty('message', 'Hello Cinemataztic');
     });
@@ -45,7 +45,7 @@ describe('Kafka client integration tests', () => {
     await new Promise((resolve) => setTimeout(resolve, 2000));
 
     // Send a message after consumer is ready.
-    await kafkaClient.sendMessage(topic, { message: 'Hello Cinemataztic' });
+    await kafkaClient.publishToTopic(topic, { message: 'Hello Cinemataztic' });
 
     // Wait for the polling (via setInterval) to pick up the message.
     await new Promise((resolve) => setTimeout(resolve, 5000));
