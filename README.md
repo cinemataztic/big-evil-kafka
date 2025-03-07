@@ -70,7 +70,7 @@ const client = new KafkaClient({
 To send a message a topic, provide the topic name and the message. 
 
 ```js
-client.sendMessage(topic, message);
+client.publishToTopic(topic, message);
 ```
 
 ## Consuming Messages
@@ -82,7 +82,7 @@ The messages are consumed at an interval of 1 second with 10 messages consumed a
 To consume a message from a topic, provide the topic name and a callback function that would return the message.
 
 ```js
-client.consumeMessage(topic, onMessage);
+client.subscribeToTopic(topic, onMessage);
 ```
 
 ## Disconnection

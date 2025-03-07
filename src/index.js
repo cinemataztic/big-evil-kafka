@@ -243,7 +243,7 @@ class KafkaClient {
    * @param {Object} message The message to send to a topic
    * @public
    */
-  async sendMessage(topic, message) {
+  async publishToTopic(topic, message) {
     try {
       await this.#initProducer();
 
@@ -277,7 +277,7 @@ class KafkaClient {
    * @param {onMessage} onMessage A function that processes the decoded message data received by consumer
    * @public
    */
-  async consumeMessage(topic, onMessage) {
+  async subscribeToTopic(topic, onMessage) {
     try {
       await this.#initConsumer();
 
