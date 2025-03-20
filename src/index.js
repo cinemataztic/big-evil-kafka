@@ -130,7 +130,14 @@ class KafkaClient {
       clearInterval(this.#intervalId);
       this.#intervalId = null;
 
-      await this.#initConsumer();
+      try {
+        await this.#connectConsumer();
+      } catch (error) {
+        console.error(
+          `Kafka consumer re-connection failed with error ${error.message}. Max retries reached. Exiting...`,
+        );
+        process.exit(1);
+      }
     });
 
     this.#consumer.once('event.error', async (error) => {
@@ -142,9 +149,15 @@ class KafkaClient {
       clearInterval(this.#intervalId);
       this.#intervalId = null;
 
-      // Gracefully disconnect consumer before attempting to connect to consumer again in case of 'event.error'
-      await this.disconnectConsumer();
-      await this.#initConsumer();
+      try {
+        await this.disconnectConsumer();
+        await this.#connectConsumer();
+      } catch (error) {
+        console.error(
+          `Kafka consumer re-connection failed with error ${error.message}. Max retries reached. Exiting...`,
+        );
+        process.exit(1);
+      }
     });
   }
 
@@ -338,17 +351,21 @@ class KafkaClient {
       if (this.#isProducerConnected) {
         await backOff(() => {
           return new Promise((resolve, reject) => {
-            this.#producer.disconnect((error) => {
-              console.error(`Error occurred disconnecting producer: ${error}`);
-              reject(error);
-            });
-
             this.#producer.once('disconnected', () => {
               this.#isProducerConnected = false;
               this.#producer.removeAllListeners();
 
               console.log('Successfully disconnected Kafka producer');
               resolve();
+            });
+
+            this.#producer.disconnect((error) => {
+              if (error) {
+                console.error(
+                  `Error occurred disconnecting producer: ${error}`,
+                );
+                reject(error);
+              }
             });
           });
         }, retryOptions);
@@ -370,11 +387,6 @@ class KafkaClient {
       if (this.#isConsumerConnected) {
         await backOff(() => {
           return new Promise((resolve, reject) => {
-            this.#consumer.disconnect((error) => {
-              console.error(`Error occurred disconnecting consumer: ${error}`);
-              reject(error);
-            });
-
             this.#consumer.once('disconnected', () => {
               this.#isConsumerConnected = false;
               this.#consumer.removeAllListeners();
@@ -385,13 +397,19 @@ class KafkaClient {
               console.log('Successfully disconnected Kafka consumer');
               resolve();
             });
+
+            this.#consumer.disconnect((error) => {
+              if (error) {
+                console.error(
+                  `Error occurred disconnecting consumer: ${error}`,
+                );
+                reject(error);
+              }
+            });
           });
         }, retryOptions);
       }
     } catch (error) {
-      clearInterval(this.#intervalId);
-      this.#intervalId = null;
-
       console.error(
         `Kafka consumer disconnection failed with error ${error.message}. Max retries reached. Exiting...`,
       );
