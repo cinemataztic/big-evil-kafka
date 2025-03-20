@@ -86,13 +86,11 @@ class KafkaClient {
     this.#brokers = config.brokers || ['localhost:9092'];
     this.#avroSchemaRegistry =
       config.avroSchemaRegistry || 'http://localhost:8081';
-
     this.#producer = new Producer({
       'client.id': this.#clientId,
       'metadata.broker.list': this.#brokers.join(','),
       dr_cb: false,
     });
-
     this.#consumer = new KafkaConsumer(
       {
         'group.id': this.#groupId,
@@ -105,17 +103,12 @@ class KafkaClient {
         'auto.offset.reset': 'earliest',
       },
     );
-
     this.#registry = new SchemaRegistry({ host: this.#avroSchemaRegistry });
-
-    // Set up persistent event listeners to monitor connection health for both producer and consumer
     this.#registerProducerEventListeners();
     this.#registerConsumerEventListeners();
   }
 
-  // Sets the flag isProducerConnected to false and attempts to reconnect producer via initProducer 
   #registerProducerEventListeners() {
-    // If the producer disconnects unexpectedly, set the isProducerConnected flag to false
     this.#producer.on('disconnected', async () => {
       console.error('Kafka producer disconnected unexpectedly. Retrying kafka producer connection');
       this.#isProducerConnected = false;
@@ -123,7 +116,6 @@ class KafkaClient {
       await this.#initProducer();
     });
 
-    // Capture event errors and set the isProducerConnected flag to false in case of an event error
     this.#producer.on('event.error', async (error) => {
       console.error(`Kafka producer encountered event error: ${error}. Retrying kafka producer connection`);
       this.#isProducerConnected = false;
@@ -132,9 +124,7 @@ class KafkaClient {
     });
   }
 
-  // Sets the flag isConsumerConnected to false and attempts to reconnect consumer via initConsumer 
   #registerConsumerEventListeners() {
-    // If the consumer disconnects unexpectedly, set the isConsumerConnected flag to false
     this.#consumer.on('disconnected', async () => {
       console.error('Kafka consumer disconnected unexpectedly. Retrying kafka consumer connection');
 
@@ -142,11 +132,9 @@ class KafkaClient {
       clearInterval(this.#intervalId);
       this.#intervalId = null;
 
-      // Connect Kafka consumer in case of unexpected disconnection
       await this.#initConsumer();
     });
 
-    // Capture event errors and set the isConsumerConnected flag to false in case of an event error
     this.#consumer.on('event.error', async (error) => {
       console.error(`Kafka consumer encountered event error: ${error}. Retrying kafka consumer connection`);
 
@@ -154,7 +142,6 @@ class KafkaClient {
       clearInterval(this.#intervalId);
       this.#intervalId = null;
 
-      // Connect Kafka consumer in case of event errors
       await this.#initConsumer();
     });
   }
@@ -167,7 +154,6 @@ class KafkaClient {
     try {
       await backOff(() => {
         return new Promise((resolve, reject) => {
-          // Remove any previously attached listeners for these events
           this.#producer.removeAllListeners('ready');
           this.#producer.removeAllListeners('connection.failure');
 
@@ -176,10 +162,7 @@ class KafkaClient {
           this.#producer.once('ready', () => {
             this.#isProducerConnected = true;
             console.log('Kafka producer successfully connected');
-
-            // Once producer is connected, remove error listeners to avoid handling late errors
             this.#producer.removeAllListeners('connection.failure');
-
             resolve();
           });
 
@@ -205,7 +188,6 @@ class KafkaClient {
     try {
       await backOff(() => {
         return new Promise((resolve, reject) => {
-          // Remove any previously attached listeners for these events
           this.#consumer.removeAllListeners('ready');
           this.#consumer.removeAllListeners('connection.failure');
 
@@ -214,10 +196,7 @@ class KafkaClient {
           this.#consumer.once('ready', () => {
             this.#isConsumerConnected = true;
             console.log('Kafka consumer successfully connected');
-
-            // Once consumer is connected, remove error listeners to avoid handling late errors
             this.#consumer.removeAllListeners('connection.failure');
-
             resolve();
           });
 
