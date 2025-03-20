@@ -109,7 +109,7 @@ class KafkaClient {
   }
 
   #registerProducerEventListeners() {
-    this.#producer.on('disconnected', async () => {
+    this.#producer.once('disconnected', async () => {
       console.error(
         'Kafka producer disconnected unexpectedly. Retrying kafka producer connection',
       );
@@ -125,7 +125,7 @@ class KafkaClient {
       }
     });
 
-    this.#producer.on('event.error', async (error) => {
+    this.#producer.once('event.error', async (error) => {
       console.error(
         `Kafka producer encountered event error: ${error}. Retrying kafka producer connection`,
       );
@@ -143,7 +143,7 @@ class KafkaClient {
   }
 
   #registerConsumerEventListeners() {
-    this.#consumer.on('disconnected', async () => {
+    this.#consumer.once('disconnected', async () => {
       console.error(
         'Kafka consumer disconnected unexpectedly. Retrying kafka consumer connection',
       );
@@ -162,7 +162,7 @@ class KafkaClient {
       }
     });
 
-    this.#consumer.on('event.error', async (error) => {
+    this.#consumer.once('event.error', async (error) => {
       console.error(
         `Kafka consumer encountered event error: ${error}. Retrying kafka consumer connection`,
       );
