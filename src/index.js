@@ -86,13 +86,11 @@ class KafkaClient {
     this.#brokers = config.brokers || ['localhost:9092'];
     this.#avroSchemaRegistry =
       config.avroSchemaRegistry || 'http://localhost:8081';
-
     this.#producer = new Producer({
       'client.id': this.#clientId,
       'metadata.broker.list': this.#brokers.join(','),
       dr_cb: false,
     });
-
     this.#consumer = new KafkaConsumer(
       {
         'group.id': this.#groupId,
@@ -105,8 +103,47 @@ class KafkaClient {
         'auto.offset.reset': 'earliest',
       },
     );
-
     this.#registry = new SchemaRegistry({ host: this.#avroSchemaRegistry });
+    this.#registerProducerEventListeners();
+    this.#registerConsumerEventListeners();
+  }
+
+  #registerProducerEventListeners() {
+    this.#producer.on('disconnected', async () => {
+      console.error('Kafka producer disconnected unexpectedly. Retrying kafka producer connection');
+      this.#isProducerConnected = false;
+
+      await this.#initProducer();
+    });
+
+    this.#producer.on('event.error', async (error) => {
+      console.error(`Kafka producer encountered event error: ${error}. Retrying kafka producer connection`);
+      this.#isProducerConnected = false;
+
+      await this.#initProducer();
+    });
+  }
+
+  #registerConsumerEventListeners() {
+    this.#consumer.on('disconnected', async () => {
+      console.error('Kafka consumer disconnected unexpectedly. Retrying kafka consumer connection');
+
+      this.#isConsumerConnected = false;
+      clearInterval(this.#intervalId);
+      this.#intervalId = null;
+
+      await this.#initConsumer();
+    });
+
+    this.#consumer.on('event.error', async (error) => {
+      console.error(`Kafka consumer encountered event error: ${error}. Retrying kafka consumer connection`);
+
+      this.#isConsumerConnected = false;
+      clearInterval(this.#intervalId);
+      this.#intervalId = null;
+
+      await this.#initConsumer();
+    });
   }
 
   /**
@@ -117,9 +154,7 @@ class KafkaClient {
     try {
       await backOff(() => {
         return new Promise((resolve, reject) => {
-          // Remove any previously attached listeners for these events
           this.#producer.removeAllListeners('ready');
-          this.#producer.removeAllListeners('event.error');
           this.#producer.removeAllListeners('connection.failure');
 
           this.#producer.connect();
@@ -127,26 +162,16 @@ class KafkaClient {
           this.#producer.once('ready', () => {
             this.#isProducerConnected = true;
             console.log('Kafka producer successfully connected');
-
-            // Once producer is connected, remove error listeners to avoid handling late errors
-            this.#producer.removeAllListeners('event.error');
             this.#producer.removeAllListeners('connection.failure');
-
             resolve();
           });
 
-          this.#producer.once('event.error', (err) => {
-            this.#isProducerConnected = false;
-            console.error(`Kafka producer connection error: ${err}`);
-            reject(err);
-          });
-
-          this.#producer.once('connection.failure', (err) => {
+          this.#producer.once('connection.failure', (error) => {
             this.#isProducerConnected = false;
             console.error(
-              `Kafka producer connection resulted in failure: ${err}`,
+              `Kafka producer connection resulted in failure: ${error}`,
             );
-            reject(err);
+            reject(error);
           });
         });
       }, retryOptions);
@@ -163,9 +188,7 @@ class KafkaClient {
     try {
       await backOff(() => {
         return new Promise((resolve, reject) => {
-          // Remove any previously attached listeners for these events
           this.#consumer.removeAllListeners('ready');
-          this.#consumer.removeAllListeners('event.error');
           this.#consumer.removeAllListeners('connection.failure');
 
           this.#consumer.connect();
@@ -173,26 +196,16 @@ class KafkaClient {
           this.#consumer.once('ready', () => {
             this.#isConsumerConnected = true;
             console.log('Kafka consumer successfully connected');
-
-            // Once consumer is connected, remove error listeners to avoid handling late errors
-            this.#consumer.removeAllListeners('event.error');
             this.#consumer.removeAllListeners('connection.failure');
-
             resolve();
           });
 
-          this.#consumer.once('event.error', (err) => {
-            this.#isConsumerConnected = false;
-            console.error(`Kafka consumer connection error: ${err}`);
-            reject(err);
-          });
-
-          this.#consumer.once('connection.failure', (err) => {
+          this.#consumer.once('connection.failure', (error) => {
             this.#isConsumerConnected = false;
             console.error(
-              `Kafka consumer connection resulted in failure: ${err}`,
+              `Kafka consumer connection resulted in failure: ${error}`,
             );
-            reject(err);
+            reject(error);
           });
         });
       }, retryOptions);
@@ -213,7 +226,7 @@ class KafkaClient {
       }
     } catch (error) {
       console.error(
-        `Error occurred connecting to Kafka producer: ${error.message}`,
+        `Kafka producer connection failed with error ${error.message}. Max retries reached. Exiting...`,
       );
       process.exit(1);
     }
@@ -231,7 +244,7 @@ class KafkaClient {
       }
     } catch (error) {
       console.error(
-        `Error occurred connecting to Kafka consumer: ${error.message}`,
+        `Kafka consumer connection failed with error ${error.message}. Max retries reached. Exiting...`,
       );
       process.exit(1);
     }
@@ -321,21 +334,28 @@ class KafkaClient {
   async disconnectProducer() {
     try {
       if (this.#isProducerConnected) {
-        return new Promise((resolve) => {
-          this.#producer.disconnect();
+        await backOff(() => {
+          return new Promise((resolve, reject) => {
+            this.#producer.disconnect((error) => {
+              console.error(`Error occurred disconnecting producer: ${error}`);
+              reject(error);
+            });
 
-          this.#producer.once('disconnected', () => {
-            this.#isProducerConnected = false;
-            this.#producer.removeAllListeners();
+            this.#producer.once('disconnected', () => {
+              this.#isProducerConnected = false;
+              this.#producer.removeAllListeners();
 
-            console.log('Successfully disconnected Kafka producer');
-            resolve();
+              console.log('Successfully disconnected Kafka producer');
+              resolve();
+            });
           });
-        });
+        }, retryOptions);
       }
     } catch (error) {
-      console.error(`Error disconnecting Kafka producer: ${error}`);
-      throw new Error(`Error disconnecting Kafka producer: ${error}`);
+      console.error(
+        `Kafka producer disconnection failed with error ${error.message}. Max retries reached. Exiting...`,
+      );
+      process.exit(1);
     }
   }
 
@@ -346,26 +366,34 @@ class KafkaClient {
   async disconnectConsumer() {
     try {
       if (this.#isConsumerConnected) {
-        return new Promise((resolve) => {
-          this.#consumer.disconnect();
+        await backOff(() => {
+          return new Promise((resolve, reject) => {
+            this.#consumer.disconnect((error) => {
+              console.error(`Error occurred disconnecting consumer: ${error}`);
+              reject(error);
+            });
 
-          this.#consumer.once('disconnected', () => {
-            this.#isConsumerConnected = false;
-            this.#consumer.removeAllListeners();
+            this.#consumer.once('disconnected', () => {
+              this.#isConsumerConnected = false;
+              this.#consumer.removeAllListeners();
 
-            clearInterval(this.#intervalId);
-            this.#intervalId = null;
+              clearInterval(this.#intervalId);
+              this.#intervalId = null;
 
-            console.log('Successfully disconnected Kafka consumer');
-            resolve();
+              console.log('Successfully disconnected Kafka consumer');
+              resolve();
+            });
           });
-        });
+        }, retryOptions);
       }
     } catch (error) {
-      console.error(`Error disconnecting Kafka consumer: ${error}`);
       clearInterval(this.#intervalId);
       this.#intervalId = null;
-      throw new Error(`Error disconnecting Kafka consumer: ${error}`);
+
+      console.error(
+        `Kafka consumer disconnection failed with error ${error.message}. Max retries reached. Exiting...`,
+      );
+      process.exit(1);
     }
   }
 }
