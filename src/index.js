@@ -116,10 +116,8 @@ class KafkaClient {
   #registerProducerEventListeners() {
     // If the producer disconnects unexpectedly, set the isProducerConnected flag to false
     this.#producer.on('disconnected', () => {
-      if (this.#isProducerConnected) {
-        console.error('Kafka producer disconnected unexpectedly');
-        this.#isProducerConnected = false;
-      }
+      console.error('Kafka producer disconnected unexpectedly');
+      this.#isProducerConnected = false;
     });
 
     // Capture event errors and set the isProducerConnected flag to false in case of an event error
@@ -132,19 +130,17 @@ class KafkaClient {
   #registerConsumerEventListeners() {
     // If the consumer disconnects unexpectedly, set the isConsumerConnected flag to false
     this.#consumer.on('disconnected', () => {
-      if (this.#isConsumerConnected) {
-        console.error('Kafka consumer disconnected unexpectedly');
-        
-        this.#isConsumerConnected = false;
-        clearInterval(this.#intervalId);
-        this.#intervalId = null;
-      }
+      console.error('Kafka consumer disconnected unexpectedly');
+
+      this.#isConsumerConnected = false;
+      clearInterval(this.#intervalId);
+      this.#intervalId = null;
     });
 
     // Capture event errors and set the isConsumerConnected flag to false in case of an event error
     this.#consumer.on('event.error', (error) => {
       console.error(`Kafka consumer encountered event error: ${error}`);
-      
+
       this.#isConsumerConnected = false;
       clearInterval(this.#intervalId);
       this.#intervalId = null;
