@@ -113,37 +113,49 @@ class KafkaClient {
     this.#registerConsumerEventListeners();
   }
 
+  // Sets the flag isProducerConnected to false and attempts to reconnect producer via initProducer 
   #registerProducerEventListeners() {
     // If the producer disconnects unexpectedly, set the isProducerConnected flag to false
-    this.#producer.on('disconnected', () => {
-      console.error('Kafka producer disconnected unexpectedly');
+    this.#producer.on('disconnected', async () => {
+      console.error('Kafka producer disconnected unexpectedly. Retrying kafka producer connection');
       this.#isProducerConnected = false;
+
+      await this.#initProducer();
     });
 
     // Capture event errors and set the isProducerConnected flag to false in case of an event error
-    this.#producer.on('event.error', (error) => {
-      console.error(`Kafka producer encountered event error: ${error}`);
+    this.#producer.on('event.error', async (error) => {
+      console.error(`Kafka producer encountered event error: ${error}. Retrying kafka producer connection`);
       this.#isProducerConnected = false;
+
+      await this.#initProducer();
     });
   }
 
+  // Sets the flag isConsumerConnected to false and attempts to reconnect consumer via initConsumer 
   #registerConsumerEventListeners() {
     // If the consumer disconnects unexpectedly, set the isConsumerConnected flag to false
-    this.#consumer.on('disconnected', () => {
-      console.error('Kafka consumer disconnected unexpectedly');
+    this.#consumer.on('disconnected', async () => {
+      console.error('Kafka consumer disconnected unexpectedly. Retrying kafka consumer connection');
 
       this.#isConsumerConnected = false;
       clearInterval(this.#intervalId);
       this.#intervalId = null;
+
+      // Connect Kafka consumer in case of unexpected disconnection
+      await this.#initConsumer();
     });
 
     // Capture event errors and set the isConsumerConnected flag to false in case of an event error
-    this.#consumer.on('event.error', (error) => {
-      console.error(`Kafka consumer encountered event error: ${error}`);
+    this.#consumer.on('event.error', async (error) => {
+      console.error(`Kafka consumer encountered event error: ${error}. Retrying kafka consumer connection`);
 
       this.#isConsumerConnected = false;
       clearInterval(this.#intervalId);
       this.#intervalId = null;
+
+      // Connect Kafka consumer in case of event errors
+      await this.#initConsumer();
     });
   }
 
