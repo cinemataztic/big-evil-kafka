@@ -142,7 +142,8 @@ class KafkaClient {
       clearInterval(this.#intervalId);
       this.#intervalId = null;
 
-      this.#consumer.disconnect();
+      // Gracefully disconnect consumer before attempting to connect to consumer again in case of 'event.error'
+      await this.disconnectConsumer();
       await this.#initConsumer();
     });
   }
