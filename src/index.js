@@ -110,75 +110,40 @@ class KafkaClient {
 
   #registerProducerEventListeners() {
     this.#producer.once('disconnected', async () => {
-      console.error(
-        'Kafka producer disconnected unexpectedly. Retrying kafka producer connection',
-      );
+      console.error('Kafka producer disconnected unexpectedly.');
       this.#isProducerConnected = false;
-
-      try {
-        await this.#connectProducer();
-      } catch (error) {
-        console.error(
-          `Kafka producer re-connection failed with error ${error.message}. Max retries reached. Exiting...`,
-        );
-        process.exit(1);
-      }
     });
 
     this.#producer.once('event.error', async (error) => {
-      console.error(
-        `Kafka producer encountered event error: ${error}. Retrying kafka producer connection`,
-      );
+      console.error(`Kafka producer encountered event error: ${error}`);
       this.#isProducerConnected = false;
-
-      try {
-        await this.#connectProducer();
-      } catch (error) {
-        console.error(
-          `Kafka producer re-connection failed with error ${error.message}. Max retries reached. Exiting...`,
-        );
-        process.exit(1);
-      }
     });
   }
 
   #registerConsumerEventListeners() {
     this.#consumer.once('disconnected', async () => {
       console.error(
-        'Kafka consumer disconnected unexpectedly. Retrying kafka consumer connection',
+        'Kafka consumer disconnected unexpectedly. Retrying kafka consumer connection...',
       );
 
       this.#isConsumerConnected = false;
       clearInterval(this.#intervalId);
       this.#intervalId = null;
 
-      try {
-        await this.#connectConsumer();
-      } catch (error) {
-        console.error(
-          `Kafka consumer re-connection failed with error ${error.message}. Max retries reached. Exiting...`,
-        );
-        process.exit(1);
-      }
+      await this.#initConsumer();
     });
 
     this.#consumer.once('event.error', async (error) => {
       console.error(
-        `Kafka consumer encountered event error: ${error}. Retrying kafka consumer connection`,
+        `Kafka consumer encountered event error: ${error}. Retrying kafka consumer connection...`,
       );
 
       this.#isConsumerConnected = false;
       clearInterval(this.#intervalId);
       this.#intervalId = null;
 
-      try {
-        await this.#connectConsumer();
-      } catch (error) {
-        console.error(
-          `Kafka consumer re-connection failed with error ${error.message}. Max retries reached. Exiting...`,
-        );
-        process.exit(1);
-      }
+      this.#consumer.disconnect();
+      await this.#initConsumer();
     });
   }
 
