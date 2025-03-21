@@ -154,8 +154,15 @@ class KafkaClient {
       this.#intervalId = null;
 
       try {
-        await this.disconnectConsumer();
-        await this.#connectConsumer();
+        await new Promise((resolve, reject) => {
+          this.#consumer.disconnect((error) => {
+            if (error) {
+              reject(error);
+            } else {
+              resolve(this.#connectConsumer());
+            }
+          });
+        });
       } catch (error) {
         console.error(
           `Kafka consumer re-connection failed with error ${error.message}. Max retries reached. Exiting...`,
