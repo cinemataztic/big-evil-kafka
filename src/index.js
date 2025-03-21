@@ -146,7 +146,7 @@ class KafkaClient {
 
     this.#consumer.once('event.error', async (error) => {
       console.error(
-        `Kafka consumer encountered event error: ${error}. Retrying kafka consumer connection...`,
+        `Kafka consumer encountered event error: ${error}.`,
       );
 
       this.#isConsumerConnected = false;
@@ -155,10 +155,11 @@ class KafkaClient {
 
       try {
         await new Promise((resolve, reject) => {
-          this.#consumer.disconnect((error) => {
-            if (error) {
-              reject(error);
+          this.#consumer.disconnect((err) => {
+            if (err) {
+              reject(err);
             } else {
+              console.log(`Kafka consumer disconnected due to event error: ${error}. Attempting to reconnect kafka consumer...`)
               resolve(this.#connectConsumer());
             }
           });
