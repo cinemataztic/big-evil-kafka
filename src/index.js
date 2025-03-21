@@ -110,8 +110,10 @@ class KafkaClient {
 
   #registerProducerEventListeners() {
     this.#producer.once('disconnected', async () => {
-      console.error('Kafka producer disconnected unexpectedly.');
-      this.#isProducerConnected = false;
+      if (this.#isProducerConnected) {
+        console.error('Kafka producer disconnected unexpectedly.');
+        this.#isProducerConnected = false;
+      }
     });
 
     this.#producer.once('event.error', async (error) => {
@@ -122,21 +124,23 @@ class KafkaClient {
 
   #registerConsumerEventListeners() {
     this.#consumer.once('disconnected', async () => {
-      console.error(
-        'Kafka consumer disconnected unexpectedly. Retrying kafka consumer connection...',
-      );
-
-      this.#isConsumerConnected = false;
-      clearInterval(this.#intervalId);
-      this.#intervalId = null;
-
-      try {
-        await this.#connectConsumer();
-      } catch (error) {
+      if (this.#isConsumerConnected) {
         console.error(
-          `Kafka consumer re-connection failed with error ${error.message}. Max retries reached. Exiting...`,
+          'Kafka consumer disconnected unexpectedly. Retrying kafka consumer connection...',
         );
-        process.exit(1);
+
+        this.#isConsumerConnected = false;
+        clearInterval(this.#intervalId);
+        this.#intervalId = null;
+
+        try {
+          await this.#connectConsumer();
+        } catch (error) {
+          console.error(
+            `Kafka consumer re-connection failed with error ${error.message}. Max retries reached. Exiting...`,
+          );
+          process.exit(1);
+        }
       }
     });
 
@@ -356,7 +360,6 @@ class KafkaClient {
               this.#producer.removeAllListeners();
 
               console.log('Successfully disconnected Kafka producer');
-              resolve();
             });
 
             this.#producer.disconnect((error) => {
@@ -365,6 +368,8 @@ class KafkaClient {
                   `Error occurred disconnecting producer: ${error}`,
                 );
                 reject(error);
+              } else {
+                resolve();
               }
             });
           });
@@ -395,7 +400,6 @@ class KafkaClient {
               this.#intervalId = null;
 
               console.log('Successfully disconnected Kafka consumer');
-              resolve();
             });
 
             this.#consumer.disconnect((error) => {
@@ -404,6 +408,8 @@ class KafkaClient {
                   `Error occurred disconnecting consumer: ${error}`,
                 );
                 reject(error);
+              } else {
+                resolve();
               }
             });
           });
