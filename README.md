@@ -2,7 +2,7 @@
 
 Wrapper package around [node-rdkafka](https://www.npmjs.com/package/node-rdkafka) where only the configuration is required, and the package can be used instantly with just the essentials. Don't be scared from the name, Kafka is cool and the name is a nod to the [Undertaker's](https://en.wikipedia.org/wiki/The_Undertaker) biker persona in the early 2000s.
 
-The purpose is to provide a batteries-included package where one does not have to worry about configuring [node-rdkafka](https://www.npmjs.com/package/node-rdkafka) for sending a message to a topic and consuming a message from a topic. The package handles node-rdkafka producer/consumer instantiation wrt producer/consumer configuration internally and only allows connecting and disconnecting producer/consumer externally.
+The purpose is to provide a batteries-included package where one does not have to worry about configuring [node-rdkafka](https://www.npmjs.com/package/node-rdkafka) for sending a message to a topic and consuming a message from a topic. The package handles producer/consumer connection internally and only allows disconnecting producer/consumer externally.
 
 ## Getting started
 
@@ -63,15 +63,6 @@ const client = new KafkaClient({
   brokers: process.env.KAFKA_BROKERS.split(','), // Assumes value as localhost:9092
   avroSchemaRegistry: process.env.SCHEMA_REGISTRY_URL,
 });
-```
-
-## Connection
-
-To connect producer and consumer, call the following methods for producer and consumer respectively. The connect methods are wrapped internally within an exponential backoff algorithm, allowing the kafka client's producer and consumer to reconnect in case of failure.
-```js
-client.connectProducer();
-
-client.connectConsumer();
 ```
 
 ## Publishing to a Topic
