@@ -72,6 +72,7 @@ To connect producer and consumer, call the following methods for producer and co
 client.connectProducer();
 
 client.connectConsumer();
+```
 
 ## Publishing to a Topic
 
