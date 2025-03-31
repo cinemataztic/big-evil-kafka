@@ -138,7 +138,7 @@ class KafkaClient {
         console.error(`Error in producer delivery-report: ${err}`);
         this.#isProducerConnected = false;
       }
-      console.log(`Producer delivery report: ${report}`);
+      console.log(`Producer delivery report: ${JSON.stringify(report)}`);
     });
   }
 
