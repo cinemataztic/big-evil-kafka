@@ -1,6 +1,6 @@
 {
   "name": "@cinemataztic/big-evil-kafka",
-  "version": "1.2.12",
+  "version": "1.2.13",
   "description": "A wrapper around node-rdkafka",
   "main": "src/index.js",
   "scripts": {
