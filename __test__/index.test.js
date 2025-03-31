@@ -14,9 +14,6 @@ beforeAll(async () => {
       : ['localhost:9092'],
   });
   logSpy = jest.spyOn(console, 'log').mockImplementation();
-
-  await kafkaClient.connectProducer();
-  await kafkaClient.connectConsumer();
 });
 
 describe('Kafka client integration tests', () => {
@@ -25,6 +22,8 @@ describe('Kafka client integration tests', () => {
   });
 
   test('should log message when producer is connected', async () => {
+    await kafkaClient.connectProducer();
+
     await kafkaClient.publishToTopic(topic, { message: 'Hello Cinemataztic' });
     expect(logSpy).toHaveBeenCalledWith(
       'Kafka producer successfully connected',
@@ -32,6 +31,8 @@ describe('Kafka client integration tests', () => {
   });
 
   test('should log message when consumer is connected', async () => {
+    await kafkaClient.connectConsumer();
+
     await kafkaClient.subscribeToTopic(topic, () => {});
     expect(logSpy).toHaveBeenCalledWith(
       'Kafka consumer successfully connected',
@@ -39,6 +40,9 @@ describe('Kafka client integration tests', () => {
   });
 
   test('should log message when consumer receives a message', async () => {
+    await kafkaClient.connectProducer();
+    await kafkaClient.connectConsumer();
+
     await kafkaClient.subscribeToTopic(topic, (data) => {
       expect(data).toHaveProperty('value');
       expect(data.value).toHaveProperty('message', 'Hello Cinemataztic');
