@@ -14,6 +14,9 @@ beforeAll(async () => {
       : ['localhost:9092'],
   });
   logSpy = jest.spyOn(console, 'log').mockImplementation();
+
+  await kafkaClient.connectProducer();
+  await kafkaClient.connectConsumer();
 });
 
 describe('Kafka client integration tests', () => {
