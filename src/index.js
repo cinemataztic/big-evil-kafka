@@ -155,7 +155,7 @@ class KafkaClient {
         this.#intervalId = null;
 
         try {
-          await this.#connectConsumer();
+          await this.connectConsumer();
         } catch (error) {
           console.error(
             `Kafka consumer re-connection failed with error ${error.message}. Max retries reached. Exiting...`,
@@ -186,7 +186,7 @@ class KafkaClient {
               console.log(
                 `Kafka consumer disconnected due to event error: ${error}. Attempting to reconnect kafka consumer...`,
               );
-              resolve(this.#connectConsumer());
+              resolve(this.connectConsumer());
             }
           });
         });
@@ -201,9 +201,9 @@ class KafkaClient {
 
   /**
    * Connects to node-rdkakfa client's producer using an exponential backoff retry mechanism
-   * @private
+   * @public
    */
-  async #connectProducer() {
+  async connectProducer() {
     try {
       await backOff(() => {
         return new Promise((resolve, reject) => {
@@ -235,9 +235,9 @@ class KafkaClient {
 
   /**
    * Connects to node-rdkakfa client's consumer using an exponential backoff retry mechanism
-   * @private
+   * @public
    */
-  async #connectConsumer() {
+  async connectConsumer() {
     try {
       await backOff(() => {
         return new Promise((resolve, reject) => {
@@ -271,42 +271,6 @@ class KafkaClient {
   }
 
   /**
-   * Wrapper function around #connectProducer where it first checks whether the producer has been connected previously
-   * @private
-   */
-  async #initProducer() {
-    try {
-      if (!this.#isProducerConnected) {
-        console.log('Kafka producer is not connected. Connecting producer');
-        await this.#connectProducer();
-      }
-    } catch (error) {
-      console.error(
-        `Kafka producer connection failed with error ${error.message}. Max retries reached. Exiting...`,
-      );
-      process.exit(1);
-    }
-  }
-
-  /**
-   * Wrapper function around #connectConsumer where it first checks whether the consumer has been connected previously
-   * @private
-   */
-  async #initConsumer() {
-    try {
-      if (!this.#isConsumerConnected) {
-        console.log('Kafka consumer is not connected. Connecting consumer');
-        await this.#connectConsumer();
-      }
-    } catch (error) {
-      console.error(
-        `Kafka consumer connection failed with error ${error.message}. Max retries reached. Exiting...`,
-      );
-      process.exit(1);
-    }
-  }
-
-  /**
    * Sends an encoded message to a topic. Encodes the message data using this.#registry.encode
    * @param {String} topic The topic to send the message to
    * @param {Object} message The message to send to a topic
@@ -314,21 +278,21 @@ class KafkaClient {
    */
   async publishToTopic(topic, message) {
     try {
-      await this.#initProducer();
-
-      if (this.#isProducerConnected) {
-        const subject = `${topic}-value`;
-        const id = await this.#registry.getRegistryId(subject, 'latest');
-
-        const encodedMessage = await this.#registry.encode(id, message);
-
-        this.#producer.produce(
-          topic,
-          null, // Partition, null for automatic partitioning
-          Buffer.from(encodedMessage),
-          `${topic}-schema`, // Key
-        );
+      if (!this.#isProducerConnected) {
+        throw new Error('Producer not connected');
       }
+
+      const subject = `${topic}-value`;
+      const id = await this.#registry.getRegistryId(subject, 'latest');
+
+      const encodedMessage = await this.#registry.encode(id, message);
+
+      this.#producer.produce(
+        topic,
+        null, // Partition, null for automatic partitioning
+        Buffer.from(encodedMessage),
+        `${topic}-schema`, // Key
+      );
     } catch (error) {
       console.error(
         `Error occurred in sending message to topic ${topic}: ${error}`,
@@ -348,29 +312,29 @@ class KafkaClient {
    */
   async subscribeToTopic(topic, onMessage) {
     try {
-      await this.#initConsumer();
-
-      if (this.#isConsumerConnected) {
-        this.#consumer.subscribe([topic]);
-
-        if (!this.#intervalId) {
-          this.#intervalId = setInterval(() => {
-            this.#consumer.consume(10);
-          }, 1000);
-        }
-
-        this.#consumer.on('data', async (data) => {
-          try {
-            const decodedValue = await this.#registry.decode(data.value);
-
-            onMessage({ value: decodedValue });
-          } catch (error) {
-            console.error(
-              `Error occurred consuming messages from ${topic}: ${error}`,
-            );
-          }
-        });
+      if (!this.#isConsumerConnected) {
+        throw new Error('Consumer not connected');
       }
+
+      this.#consumer.subscribe([topic]);
+
+      if (!this.#intervalId) {
+        this.#intervalId = setInterval(() => {
+          this.#consumer.consume(10);
+        }, 1000);
+      }
+
+      this.#consumer.on('data', async (data) => {
+        try {
+          const decodedValue = await this.#registry.decode(data.value);
+
+          onMessage({ value: decodedValue });
+        } catch (error) {
+          console.error(
+            `Error occurred consuming messages from ${topic}: ${error}`,
+          );
+        }
+      });
     } catch (error) {
       console.error(
         `Error occurred in consuming message from topic ${topic}: ${error}`,
