@@ -101,7 +101,7 @@ class KafkaClient {
     this.#producer = new Producer({
       'client.id': this.#clientId,
       'metadata.broker.list': this.#brokers.join(','),
-      dr_cb: false,
+      dr_cb: true,
     });
     this.#consumer = new KafkaConsumer(
       {
