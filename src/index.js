@@ -80,7 +80,7 @@ class KafkaClient {
    * @type {number | NodeJS.Timeout | null}
    * @private
    */
-  #intervalId;
+  #consumerPollInterval;
 
   /**
    * Initialize Kafka Client
@@ -179,8 +179,8 @@ class KafkaClient {
 
         this.#isConsumerConnected = false;
         this.#isConsumerReconnecting = true;
-        clearInterval(this.#intervalId);
-        this.#intervalId = null;
+        clearInterval(this.#consumerPollInterval);
+        this.#consumerPollInterval = null;
 
         try {
           await this.#connectConsumer();
@@ -202,8 +202,8 @@ class KafkaClient {
       console.error(`Kafka consumer encountered event error: ${error}.`);
       this.#isConsumerConnected = false;
       this.#isConsumerReconnecting = true;
-      clearInterval(this.#intervalId);
-      this.#intervalId = null;
+      clearInterval(this.#consumerPollInterval);
+      this.#consumerPollInterval = null;
 
       try {
         await new Promise((resolve, reject) => {
@@ -381,8 +381,8 @@ class KafkaClient {
       if (this.#isConsumerConnected) {
         this.#consumer.subscribe([topic]);
 
-        if (!this.#intervalId) {
-          this.#intervalId = setInterval(() => {
+        if (!this.#consumerPollInterval) {
+          this.#consumerPollInterval = setInterval(() => {
             this.#consumer.consume(10);
           }, 1000);
         }
@@ -403,8 +403,8 @@ class KafkaClient {
       console.error(
         `Error occurred in consuming message from topic ${topic}: ${error}`,
       );
-      clearInterval(this.#intervalId);
-      this.#intervalId = null;
+      clearInterval(this.#consumerPollInterval);
+      this.#consumerPollInterval = null;
       throw new Error(
         `Error occurred in consuming message from topic ${topic}: ${error}`,
       );
@@ -458,8 +458,8 @@ class KafkaClient {
           return new Promise((resolve, reject) => {
             this.#consumer.once('disconnected', () => {
               this.#isConsumerConnected = false;
-              clearInterval(this.#intervalId);
-              this.#intervalId = null;
+              clearInterval(this.#consumerPollInterval);
+              this.#consumerPollInterval = null;
               this.#consumer.removeAllListeners();
               console.log('Successfully disconnected Kafka consumer');
             });
