@@ -76,11 +76,17 @@ class KafkaClient {
    */
   #isConsumerReconnecting = false;
   /**
-   * The interval ID.
+   * The consumer poll interval.
    * @type {number | NodeJS.Timeout | null}
    * @private
    */
   #consumerPollInterval;
+/**
+ * The producer poll interval.
+ * @type {number | NodeJS.Timeout | null}
+ * @private
+ */
+#producerPollInterval = null;
 
   /**
    * Initialize Kafka Client
@@ -307,6 +313,17 @@ class KafkaClient {
       if (!this.#isProducerConnected) {
         console.log('Kafka producer is not connected. Connecting producer');
         await this.#connectProducer();
+
+        if (!this.#producerPollInterval) {
+            this.#producerPollInterval = setInterval(() => {
+              try {
+                this.#producer.poll();
+              } catch (pollErr) {
+                console.error('Error while polling producer:', pollErr);
+              }
+            }, 100);
+        }
+        
       }
     } catch (error) {
       console.error(
@@ -422,6 +439,10 @@ class KafkaClient {
           return new Promise((resolve, reject) => {
             this.#producer.once('disconnected', () => {
               this.#isProducerConnected = false;
+              if (this.#producerPollInterval) {
+                clearInterval(this.#producerPollInterval);
+                this.#producerPollInterval = null;
+              }
               this.#producer.removeAllListeners();
               console.log('Successfully disconnected Kafka producer');
             });
