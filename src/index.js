@@ -96,12 +96,8 @@ class KafkaClient {
     this.#producer = new Producer({
       'client.id': this.#clientId,
       'metadata.broker.list': this.#brokers.join(','),
-      'queue.buffering.max.messages': 100000, // Maximum number of messages allowed on the producer queue. This queue is shared by all topics and partitions.
-      'queue.buffering.max.ms': 5, // Delay in milliseconds to wait for messages in the producer queue to accumulate before constructing message batches (MessageSets) to transmit to brokers.
       dr_cb: true,
     });
-    // Set a poll interval to automatically call poll() on the producer
-    this.#producer.setPollInterval(100);
 
     this.#consumer = new KafkaConsumer(
       {
@@ -136,7 +132,6 @@ class KafkaClient {
     this.#producer.on('delivery-report', (err, report) => {
       if (err) {
         console.error(`Error in producer delivery-report: ${err}`);
-        this.#isProducerConnected = false;
       }
       console.log(`Producer delivery report: ${JSON.stringify(report)}`);
     });
@@ -214,6 +209,8 @@ class KafkaClient {
 
           this.#producer.once('ready', () => {
             this.#isProducerConnected = true;
+            // Set a poll interval to automatically call poll() on the producer
+            this.#producer.setPollInterval(100);
             console.log('Kafka producer successfully connected');
             this.#producer.removeAllListeners('connection.failure');
             resolve();
@@ -394,6 +391,8 @@ class KafkaClient {
           return new Promise((resolve, reject) => {
             this.#producer.once('disconnected', () => {
               this.#isProducerConnected = false;
+              // Set setPollInterval to 0 to turn it off
+              this.#producer.setPollInterval(0);
               this.#producer.removeAllListeners();
               console.log('Successfully disconnected Kafka producer');
             });
