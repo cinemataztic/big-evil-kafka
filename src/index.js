@@ -96,7 +96,7 @@ class KafkaClient {
     this.#producer = new Producer({
       'client.id': this.#clientId,
       'metadata.broker.list': this.#brokers.join(','),
-      dr_cb: true,
+      dr_cb: false,
     });
 
     this.#consumer = new KafkaConsumer(
@@ -127,13 +127,6 @@ class KafkaClient {
     this.#producer.on('event.error', async (error) => {
       console.error(`Kafka producer encountered event error: ${error}`);
       this.#isProducerConnected = false;
-    });
-
-    this.#producer.on('delivery-report', (err, report) => {
-      if (err) {
-        console.error(`Error in producer delivery-report: ${err}`);
-      }
-      console.log(`Producer delivery report: ${JSON.stringify(report)}`);
     });
   }
 
