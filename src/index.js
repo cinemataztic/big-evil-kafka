@@ -222,7 +222,7 @@ class KafkaClient {
               if (settled) return;
               settled = true;
 
-              console.error('Producer connection error:', error);
+              console.error(`Producer connection error: ${error?.message || error}`);
               this.#producer.removeListener('ready', () => {});
               this.#producer.removeListener('connection.failure', () => {});
               reject(error);
@@ -289,7 +289,7 @@ class KafkaClient {
               if (settled) return;
               settled = true;
 
-              console.error('Consumer connection error:', error);
+              console.error(`Consumer connection error: ${error?.message || error}`);
               this.#consumer.removeAllListeners('ready');
               this.#consumer.removeAllListeners('connection.failure');
               reject(error);
