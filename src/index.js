@@ -199,21 +199,18 @@ class KafkaClient {
 
             // Temporary event listener for connection phase, needed since retry requires a reject before attempting to connect again.
             this.#producer.once('event.error', (error) => {
+              this.#isProducerReconnecting = true;
               console.error(
                 `Producer connection error: ${error?.message || error}`,
               );
-              this.#isProducerReconnecting = true;
               reject(error);
             });
 
             this.#producer.once('ready', () => {
               this.#isProducerConnected = true;
+              this.#isProducerReconnecting = false;
               this.#producer.setPollInterval(100);
               console.log('Producer connected');
-              this.#isProducerReconnecting = false;
-
-              this.#producer.removeAllListeners('connection.failure');
-              this.#producer.removeListener('event.error', onEventError);
               resolve();
             });
 
@@ -221,8 +218,6 @@ class KafkaClient {
               this.#isProducerConnected = false;
               this.#isProducerReconnecting = true;
               console.error(`Producer connection failure: ${error}`);
-
-              this.#producer.removeListener('event.error', onEventError);
               reject(error);
             });
           });
@@ -252,10 +247,10 @@ class KafkaClient {
 
             // Temporary event listener for connection phase, needed since retry requires a reject before attempting to connect again.
             this.#consumer.once('event.error', (error) => {
+              this.#isConsumerReconnecting = true;
               console.error(
                 `Consumer connection event error: ${error?.message || error}`,
               );
-              this.#isConsumerReconnecting = true;
               reject(error);
             });
 
@@ -263,8 +258,6 @@ class KafkaClient {
               this.#isConsumerConnected = true;
               this.#isConsumerReconnecting = false;
               console.log('Consumer connected');
-
-              this.#consumer.removeListener('event.error', onEventError);
               resolve();
             });
 
@@ -272,8 +265,6 @@ class KafkaClient {
               this.#isConsumerConnected = false;
               this.#isConsumerReconnecting = true;
               console.error(`Consumer connection failure: ${error}`);
-
-              this.#consumer.removeListener('event.error', onEventError);
               reject(error);
             });
           });
