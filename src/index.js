@@ -93,6 +93,18 @@ class KafkaClient {
    */
   #consumerMaxConnectAttempts = 5;
   /**
+   * The producer event error flag for rejecting promise in connect method in case event 'event.error' is emitted.
+   * @type {number}
+   * @private
+   */
+  #producerEventError = false;
+  /**
+   * The consumer event error flag for rejecting promise in connect method in case event 'event.error' is emitted.
+   * @type {number}
+   * @private
+   */
+  #consumerEventError = false;
+  /**
    * The interval ID.
    * @type {number | NodeJS.Timeout | null}
    * @private
@@ -151,9 +163,10 @@ class KafkaClient {
 
     this.#producer.on('event.error', async (error) => {
       if (!this.#isProducerReconnecting) {
-        console.error('Producer runtime error:', error);
+        console.error(`Producer runtime error: ${error}`);
         this.#isProducerConnected = false;
         this.#isProducerReconnecting = true;
+        this.#producerEventError = true;
         await this.#retryProducerConnection();
       }
     });
@@ -172,9 +185,10 @@ class KafkaClient {
 
     this.#consumer.on('event.error', async (error) => {
       if (!this.#isConsumerReconnecting) {
-        console.error('Consumer runtime error:', error);
+        console.error(`Consumer runtime error: ${error}`);
         this.#isConsumerConnected = false;
         this.#isConsumerReconnecting = true;
+        this.#consumerEventError = true;
         clearInterval(this.#intervalId);
         await this.#retryConsumerConnection();
       }
@@ -196,24 +210,14 @@ class KafkaClient {
             this.#producer.removeAllListeners('ready');
             this.#producer.removeAllListeners('connection.failure');
 
-            const timeout = setTimeout(() => {
-              if (!settled) {
-                settled = true;
-
-                this.#producer.removeListener('ready', onReady);
-                this.#producer.removeListener('connection.failure', onFailure);
-                reject(new Error('Producer connection timed out'));
-              }
-            }, 3000); // 3-second timeout
-
             const onReady = () => {
               if (settled) return;
               settled = true;
-              clearTimeout(timeout);
 
               this.#isProducerConnected = true;
               this.#producer.setPollInterval(100);
               console.log('Producer connected');
+              this.#producerEventError = false;
 
               this.#producer.removeListener('connection.failure', onFailure);
               resolve();
@@ -222,7 +226,6 @@ class KafkaClient {
             const onFailure = (error) => {
               if (settled) return;
               settled = true;
-              clearTimeout(timeout);
 
               this.#isProducerConnected = false;
               this.#isProducerReconnecting = false;
@@ -236,6 +239,10 @@ class KafkaClient {
             this.#producer.once('connection.failure', onFailure);
 
             this.#producer.connect();
+
+            if (this.#producerEventError) {
+              reject('Producer is not connected. Retrying...');
+            }
           });
         },
         'producer-connection',
@@ -260,24 +267,14 @@ class KafkaClient {
             this.#consumer.removeAllListeners('ready');
             this.#consumer.removeAllListeners('connection.failure');
 
-            const timeout = setTimeout(() => {
-              if (!settled) {
-                settled = true;
-
-                this.#consumer.removeListener('ready', onReady);
-                this.#consumer.removeListener('connection.failure', onFailure);
-                reject(new Error('Consumer connection timed out'));
-              }
-            }, 3000); // Timeout set to 3 seconds
-
             const onReady = () => {
               if (settled) return;
               settled = true;
-              clearTimeout(timeout);
 
               this.#isConsumerConnected = true;
               console.log('Consumer connected');
               this.#isConsumerReconnecting = false;
+              this.#consumerEventError = false;
 
               this.#consumer.removeListener('connection.failure', onFailure);
               resolve();
@@ -286,7 +283,6 @@ class KafkaClient {
             const onFailure = (error) => {
               if (settled) return;
               settled = true;
-              clearTimeout(timeout);
 
               this.#isConsumerConnected = false;
               this.#isConsumerReconnecting = true;
@@ -300,6 +296,10 @@ class KafkaClient {
             this.#consumer.once('connection.failure', onFailure);
 
             this.#consumer.connect();
+
+            if (this.#consumerEventError) {
+              reject('Consumer is not connected. Retrying...');
+            }
           });
         },
         'consumer-connection',
