@@ -188,6 +188,11 @@ class KafkaClient {
    */
   async #connectProducer(numOfAttempts = this.#producerMinConnectAttempts) {
     try {
+      if (this.#isProducerConnected || this.#isProducerReconnecting) {
+        console.log('Producer is already connected or reconnecting.');
+        return;
+      }
+
       await retry(
         () => {
           return new Promise((resolve, reject) => {
@@ -220,6 +225,11 @@ class KafkaClient {
    */
   async #connectConsumer() {
     try {
+      if (this.#isConsumerReconnecting || this.#isConsumerConnected) {
+        console.log('Consumer is already connected or reconnecting.');
+        return;
+      }
+
       await retry(
         () => {
           return new Promise((resolve, reject) => {
