@@ -151,16 +151,16 @@ class KafkaClient {
 
     this.#producer.on('event.error', async (error) => {
       if (!this.#isProducerReconnecting) {
-        console.error('Producer runtime error:', err);
+        console.error('Producer runtime error:', error);
         this.#isProducerConnected = false;
         this.#isProducerReconnecting = true;
         await this.#retryProducerConnection();
       }
     });
 
-    this.#producer.on('connection.failure', async (err) => {
+    this.#producer.on('connection.failure', async (error) => {
       if (!this.#isProducerReconnecting) {
-        console.error('Producer connection.failure at runtime:', err);
+        console.error('Producer connection.failure at runtime:', error);
         this.#isProducerConnected = false;
         this.#isProducerReconnecting = true;
         await this.#retryProducerConnection();
@@ -181,7 +181,7 @@ class KafkaClient {
 
     this.#consumer.on('event.error', async (error) => {
       if (!this.#isConsumerReconnecting) {
-        console.error('Consumer runtime error:', err);
+        console.error('Consumer runtime error:', error);
         this.#isConsumerConnected = false;
         this.#isConsumerReconnecting = true;
         clearInterval(this.#intervalId);
@@ -189,9 +189,9 @@ class KafkaClient {
       }
     });
 
-    this.#consumer.on('connection.failure', async (err) => {
+    this.#consumer.on('connection.failure', async (error) => {
       if (!this.#isConsumerReconnecting) {
-        console.error('Consumer connection.failure at runtime:', err);
+        console.error('Consumer connection.failure at runtime:', error);
         this.#isConsumerConnected = false;
         this.#isConsumerReconnecting = true;
         clearInterval(this.#intervalId);
@@ -218,22 +218,22 @@ class KafkaClient {
             resolve();
           };
 
-          const onErrorAttempt = (err) => {
+          const onErrorAttempt = (error) => {
             cleanup();
             console.error(
               'Producer connect attempt failed (event.error):',
-              err,
+              error,
             );
-            reject(err);
+            reject(error);
           };
 
-          const onConnFailAttempt = (err) => {
+          const onConnFailAttempt = (error) => {
             cleanup();
             console.error(
               'Producer connect attempt failed (connection.failure):',
-              err,
+              error,
             );
-            reject(err);
+            reject(error);
           };
 
           const cleanup = () => {
@@ -274,22 +274,22 @@ class KafkaClient {
             resolve();
           };
 
-          const onErrorAttempt = (err) => {
+          const onErrorAttempt = (error) => {
             cleanup();
             console.error(
               'Consumer connect attempt failed (event.error):',
-              err,
+              error,
             );
-            reject(err);
+            reject(error);
           };
 
-          const onConnFailAttempt = (err) => {
+          const onConnFailAttempt = (error) => {
             cleanup();
             console.error(
               'Consumer connect attempt failed (connection.failure):',
-              err,
+              error,
             );
-            reject(err);
+            reject(error);
           };
 
           const cleanup = () => {
@@ -322,8 +322,8 @@ class KafkaClient {
       console.log('Initializing producer connection…');
       try {
         await this.#connectProducer();
-      } catch (err) {
-        console.error('Producer failed to initialize:', err);
+      } catch (error) {
+        console.error('Producer failed to initialize:', error);
       }
     }
   }
@@ -337,8 +337,8 @@ class KafkaClient {
       console.log('Initializing consumer connection…');
       try {
         await this.#connectConsumer();
-      } catch (err) {
-        console.error('Consumer failed to initialize:', err);
+      } catch (error) {
+        console.error('Consumer failed to initialize:', error);
         process.exit(1);
       }
     }
