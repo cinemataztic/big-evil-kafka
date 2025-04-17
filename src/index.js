@@ -75,11 +75,11 @@ class KafkaClient {
    */
   #isProducerReconnecting = false;
   /**
-   * The retry connection attempts for producer upon initial connection failure. Retry attempts are set to 2.
+   * The retry connection attempts for producer upon initial connection failure. Retry attempts are set to 1.
    * @type {number | NodeJS.Timeout | null}
    * @private
    */
-  #producerInitialConnectionAttempts = 2;
+  #producerInitialConnectionAttempts = 1;
   /**
    * The retry connection attempts for producer in case of an 'event.error' or unexpected 'disconnected' events. Retry attempts are set to 5.
    * @type {number}
