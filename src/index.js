@@ -191,35 +191,43 @@ class KafkaClient {
       await retryConnection(
         () => {
           return new Promise((resolve, reject) => {
-            this.#producer.connect();
-
-            // Ensures that multiple listeners are not registered in case of failure
-            this.#producer.removeAllListeners('ready');
-            this.#producer.removeAllListeners('connection.failure');
-
-            // Temporary event listener for connection phase, needed since retry requires a reject before attempting to connect again.
-            this.#producer.once('event.error', (error) => {
-              this.#isProducerReconnecting = true;
-              console.error(
-                `Producer connection error: ${error?.message || error}`,
-              );
-              reject(error);
-            });
-
-            this.#producer.once('ready', () => {
+            const onReady = () => {
               this.#isProducerConnected = true;
               this.#isProducerReconnecting = false;
               this.#producer.setPollInterval(100);
               console.log('Producer connected');
+              cleanup();
               resolve();
-            });
+            };
 
-            this.#producer.once('connection.failure', (error) => {
+            const onFailure = (error) => {
               this.#isProducerConnected = false;
               this.#isProducerReconnecting = true;
               console.error(`Producer connection failure: ${error}`);
+              cleanup();
               reject(error);
-            });
+            };
+
+            const onError = (error) => {
+              this.#isProducerReconnecting = true;
+              console.error(
+                `Producer connection error: ${error?.message || error}`,
+              );
+              cleanup();
+              reject(error);
+            };
+
+            const cleanup = () => {
+              this.#producer.off('ready', onReady);
+              this.#producer.off('connection.failure', onFailure);
+              this.#producer.off('event.error', onError);
+            };
+
+            this.#producer.once('ready', onReady);
+            this.#producer.once('connection.failure', onFailure);
+            this.#producer.once('event.error', onError);
+
+            this.#producer.connect();
           });
         },
         'producer-connection',
@@ -239,34 +247,42 @@ class KafkaClient {
       await retryConnection(
         () => {
           return new Promise((resolve, reject) => {
-            this.#consumer.connect();
+            const onReady = () => {
+              this.#isConsumerConnected = true;
+              this.#isConsumerReconnecting = false;
+              console.log('Consumer connected');
+              cleanup();
+              resolve();
+            };
 
-            // Ensures that multiple listeners are not registered in case of failure
-            this.#consumer.removeAllListeners('ready');
-            this.#consumer.removeAllListeners('connection.failure');
+            const onFailure = (error) => {
+              this.#isConsumerConnected = false;
+              this.#isConsumerReconnecting = true;
+              console.error(`Consumer connection failure: ${error}`);
+              cleanup();
+              reject(error);
+            };
 
-            // Temporary event listener for connection phase, needed since retry requires a reject before attempting to connect again.
-            this.#consumer.once('event.error', (error) => {
+            const onError = (error) => {
               this.#isConsumerReconnecting = true;
               console.error(
                 `Consumer connection event error: ${error?.message || error}`,
               );
+              cleanup();
               reject(error);
-            });
+            };
 
-            this.#consumer.once('ready', () => {
-              this.#isConsumerConnected = true;
-              this.#isConsumerReconnecting = false;
-              console.log('Consumer connected');
-              resolve();
-            });
+            const cleanup = () => {
+              this.#consumer.off('ready', onReady);
+              this.#consumer.off('connection.failure', onFailure);
+              this.#consumer.off('event.error', onError);
+            };
 
-            this.#consumer.once('connection.failure', (error) => {
-              this.#isConsumerConnected = false;
-              this.#isConsumerReconnecting = true;
-              console.error(`Consumer connection failure: ${error}`);
-              reject(error);
-            });
+            this.#consumer.once('ready', onReady);
+            this.#consumer.once('connection.failure', onFailure);
+            this.#consumer.once('event.error', onError);
+
+            this.#consumer.connect();
           });
         },
         'consumer-connection',
