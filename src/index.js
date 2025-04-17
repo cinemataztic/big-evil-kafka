@@ -142,7 +142,7 @@ class KafkaClient {
   #registerProducerEventListeners() {
     this.#producer.on('disconnected', async () => {
       if (this.#isProducerConnected && !this.#isProducerReconnecting) {
-        console.error('Producer disconnected—reconnecting…');
+        console.error('Producer disconnected. Reconnecting…');
         this.#isProducerConnected = false;
         this.#isProducerReconnecting = true;
         await this.#retryProducerConnection();
@@ -162,7 +162,7 @@ class KafkaClient {
   #registerConsumerEventListeners() {
     this.#consumer.on('disconnected', async () => {
       if (this.#isConsumerConnected && !this.#isConsumerReconnecting) {
-        console.error('Consumer disconnected—reconnecting…');
+        console.error('Consumer disconnected. Reconnecting…');
         this.#isConsumerConnected = false;
         this.#isConsumerReconnecting = true;
         clearInterval(this.#intervalId);
@@ -191,21 +191,17 @@ class KafkaClient {
       await retryConnection(
         () => {
           return new Promise((resolve, reject) => {
-            // The `settled` flag ensures that the connection promise is only resolved or rejected once.
-            // Multiple connection-related events can fire in quick succession i.e 'ready', 'connection.failure', 'event.error'
-            // `settled` guards against multiple event handlers trying to settle the same Promise.
-            let settled = false;
+            this.#producer.connect();
 
+            // Ensures that multiple listeners are not registered in case of failure
             this.#producer.removeAllListeners('ready');
             this.#producer.removeAllListeners('connection.failure');
 
             this.#producer.once('ready', () => {
-              if (settled) return;
-              settled = true;
-
               this.#isProducerConnected = true;
               this.#producer.setPollInterval(100);
               console.log('Producer connected');
+              this.#isProducerReconnecting = false;
 
               this.#producer.removeAllListeners('connection.failure');
               this.#producer.removeListener('event.error', onEventError);
@@ -213,11 +209,8 @@ class KafkaClient {
             });
 
             this.#producer.once('connection.failure', (error) => {
-              if (settled) return;
-              settled = true;
-
               this.#isProducerConnected = false;
-              this.#isProducerReconnecting = false;
+              this.#isProducerReconnecting = true;
               console.error(`Producer connection failure: ${error}`);
 
               this.#producer.removeListener('event.error', onEventError);
@@ -226,20 +219,14 @@ class KafkaClient {
 
             // Temporary event listener for connection phase, needed since retry requires a reject before attempting to connect again.
             const onEventError = (error) => {
-              if (settled) return;
-              settled = true;
-
               console.error(
                 `Producer connection error: ${error?.message || error}`,
               );
-              this.#producer.removeListener('ready', () => {});
-              this.#producer.removeListener('connection.failure', () => {});
+              this.#isProducerReconnecting = true;
               reject(error);
             };
 
             this.#producer.once('event.error', onEventError);
-
-            this.#producer.connect();
           });
         },
         'producer-connection',
@@ -259,32 +246,22 @@ class KafkaClient {
       await retryConnection(
         () => {
           return new Promise((resolve, reject) => {
-            // The `settled` flag ensures that the connection promise is only resolved or rejected once.
-            // Multiple connection-related events can fire in quick succession i.e 'ready', 'connection.failure', 'event.error'
-            // `settled` guards against multiple event handlers trying to settle the same Promise.
-            let settled = false;
+            this.#consumer.connect();
 
+            // Ensures that multiple listeners are not registered in case of failure
             this.#consumer.removeAllListeners('ready');
             this.#consumer.removeAllListeners('connection.failure');
-            // Do not remove 'event.error' to keep global listeners intact
 
             this.#consumer.once('ready', () => {
-              if (settled) return;
-              settled = true;
-
               this.#isConsumerConnected = true;
               this.#isConsumerReconnecting = false;
               console.log('Consumer connected');
 
-              this.#consumer.removeAllListeners('connection.failure');
               this.#consumer.removeListener('event.error', onEventError);
               resolve();
             });
 
             this.#consumer.once('connection.failure', (error) => {
-              if (settled) return;
-              settled = true;
-
               this.#isConsumerConnected = false;
               this.#isConsumerReconnecting = true;
               console.error(`Consumer connection failure: ${error}`);
@@ -295,20 +272,14 @@ class KafkaClient {
 
             // Temporary event listener for connection phase, needed since retry requires a reject before attempting to connect again.
             const onEventError = (error) => {
-              if (settled) return;
-              settled = true;
-
               console.error(
-                `Consumer connection error: ${error?.message || error}`,
+                `Consumer connection event error: ${error?.message || error}`,
               );
-              this.#consumer.removeAllListeners('ready');
-              this.#consumer.removeAllListeners('connection.failure');
+              this.#isConsumerReconnecting = true;
               reject(error);
             };
 
             this.#consumer.once('event.error', onEventError);
-
-            this.#consumer.connect();
           });
         },
         'consumer-connection',
