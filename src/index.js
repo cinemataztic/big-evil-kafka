@@ -157,15 +157,6 @@ class KafkaClient {
         await this.#retryProducerConnection();
       }
     });
-
-    this.#producer.on('connection.failure', async (error) => {
-      if (!this.#isProducerReconnecting) {
-        console.error('Producer connection.failure at runtime:', error);
-        this.#isProducerConnected = false;
-        this.#isProducerReconnecting = true;
-        await this.#retryProducerConnection();
-      }
-    });
   }
 
   #registerConsumerEventListeners() {
@@ -182,16 +173,6 @@ class KafkaClient {
     this.#consumer.on('event.error', async (error) => {
       if (!this.#isConsumerReconnecting) {
         console.error('Consumer runtime error:', error);
-        this.#isConsumerConnected = false;
-        this.#isConsumerReconnecting = true;
-        clearInterval(this.#intervalId);
-        await this.#retryConsumerConnection();
-      }
-    });
-
-    this.#consumer.on('connection.failure', async (error) => {
-      if (!this.#isConsumerReconnecting) {
-        console.error('Consumer connection.failure at runtime:', error);
         this.#isConsumerConnected = false;
         this.#isConsumerReconnecting = true;
         clearInterval(this.#intervalId);
@@ -227,22 +208,9 @@ class KafkaClient {
             reject(error);
           };
 
-          const onConnFailAttempt = (error) => {
-            cleanup();
-            console.error(
-              'Producer connect attempt failed (connection.failure):',
-              error,
-            );
-            reject(error);
-          };
-
           const cleanup = () => {
             this.#producer.removeListener('ready', onReady);
             this.#producer.removeListener('event.error', onErrorAttempt);
-            this.#producer.removeListener(
-              'connection.failure',
-              onConnFailAttempt,
-            );
           };
 
           // ensure only these connect‐time listeners are active
@@ -250,7 +218,6 @@ class KafkaClient {
 
           this.#producer.once('ready', onReady);
           this.#producer.once('event.error', onErrorAttempt);
-          this.#producer.once('connection.failure', onConnFailAttempt);
           this.#producer.connect();
         }),
       'producer-connection',
@@ -283,29 +250,15 @@ class KafkaClient {
             reject(error);
           };
 
-          const onConnFailAttempt = (error) => {
-            cleanup();
-            console.error(
-              'Consumer connect attempt failed (connection.failure):',
-              error,
-            );
-            reject(error);
-          };
-
           const cleanup = () => {
             this.#consumer.removeListener('ready', onReady);
             this.#consumer.removeListener('event.error', onErrorAttempt);
-            this.#consumer.removeListener(
-              'connection.failure',
-              onConnFailAttempt,
-            );
           };
 
           cleanup();
 
           this.#consumer.once('ready', onReady);
           this.#consumer.once('event.error', onErrorAttempt);
-          this.#consumer.once('connection.failure', onConnFailAttempt);
           this.#consumer.connect();
         }),
       'consumer-connection',
