@@ -75,6 +75,12 @@ class KafkaClient {
    */
   #isProducerReconnecting = false;
   /**
+   * The initial retry connection attempts for producer. Initial retry attempts are set to 1.
+   * @type {number}
+   * @private
+   */
+  #producerMinConnectAttempts = 1;
+  /**
    * The retry connection attempts for producer in case of an 'event.error' or unexpected 'disconnected' events. Retry attempts are set to 5.
    * @type {number}
    * @private
@@ -177,9 +183,10 @@ class KafkaClient {
 
   /**
    * Connects to node-rdkakfa client's producer using an exponential backoff retry mechanism
+   * @param {number} [numOfAttempts=2] - The maximum number of retry attempts before the connection is considered failed.
    * @private
    */
-  async #connectProducer() {
+  async #connectProducer(numOfAttempts = this.#producerMinConnectAttempts) {
     try {
       await retryConnection(
         () => {
@@ -222,7 +229,9 @@ class KafkaClient {
               if (settled) return;
               settled = true;
 
-              console.error(`Producer connection error: ${error?.message || error}`);
+              console.error(
+                `Producer connection error: ${error?.message || error}`,
+              );
               this.#producer.removeListener('ready', () => {});
               this.#producer.removeListener('connection.failure', () => {});
               reject(error);
@@ -234,7 +243,7 @@ class KafkaClient {
           });
         },
         'producer-connection',
-        this.#producerMaxConnectAttempts,
+        numOfAttempts,
       );
     } catch (error) {
       throw new Error(error);
@@ -289,7 +298,9 @@ class KafkaClient {
               if (settled) return;
               settled = true;
 
-              console.error(`Consumer connection error: ${error?.message || error}`);
+              console.error(
+                `Consumer connection error: ${error?.message || error}`,
+              );
               this.#consumer.removeAllListeners('ready');
               this.#consumer.removeAllListeners('connection.failure');
               reject(error);
@@ -506,7 +517,7 @@ class KafkaClient {
    */
   async #retryProducerConnection() {
     try {
-      await this.#connectProducer();
+      await this.#connectProducer(this.#producerMaxConnectAttempts);
     } catch (error) {
       console.error(
         `Kafka producer re-connection failed with error ${error.message}. Max retries reached. Exiting...`,
