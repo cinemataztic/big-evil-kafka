@@ -1,7 +1,7 @@
 const { Producer, KafkaConsumer } = require('node-rdkafka');
 const { SchemaRegistry } = require('@kafkajs/confluent-schema-registry');
 
-const retryConnection = require('./utils/retryConnection');
+const retry = require('./utils/retry');
 
 /**
  * Kafka client which is a wrapper library around node-rdkafka
@@ -188,46 +188,22 @@ class KafkaClient {
    */
   async #connectProducer(numOfAttempts = this.#producerMinConnectAttempts) {
     try {
-      await retryConnection(
+      await retry(
         () => {
           return new Promise((resolve, reject) => {
-            const onReady = () => {
-              this.#isProducerConnected = true;
-              this.#isProducerReconnecting = false;
-              this.#producer.setPollInterval(100);
-              console.log('Producer connected');
-              cleanup();
-              resolve();
-            };
-
-            const onFailure = (error) => {
-              this.#isProducerConnected = false;
-              this.#isProducerReconnecting = true;
-              console.error(`Producer connection failure: ${error}`);
-              cleanup();
-              reject(error);
-            };
-
-            const onError = (error) => {
-              this.#isProducerReconnecting = true;
-              console.error(
-                `Producer connection error: ${error?.message || error}`,
-              );
-              cleanup();
-              reject(error);
-            };
-
-            const cleanup = () => {
-              this.#producer.off('ready', onReady);
-              this.#producer.off('connection.failure', onFailure);
-              this.#producer.off('event.error', onError);
-            };
-
-            this.#producer.once('ready', onReady);
-            this.#producer.once('connection.failure', onFailure);
-            this.#producer.once('event.error', onError);
-
-            this.#producer.connect();
+            this.#producer.connect({}, (error) => {
+              if (error) {
+                console.error(`Producer connection failure: ${error}`);
+                this.#isProducerConnected = false;
+                this.#isProducerReconnecting = true;
+                reject(error);
+              } else {
+                console.log('Producer connected');
+                this.#isProducerConnected = true;
+                this.#isProducerReconnecting = false;
+                resolve();
+              }
+            });
           });
         },
         'producer-connection',
@@ -244,45 +220,22 @@ class KafkaClient {
    */
   async #connectConsumer() {
     try {
-      await retryConnection(
+      await retry(
         () => {
           return new Promise((resolve, reject) => {
-            const onReady = () => {
-              this.#isConsumerConnected = true;
-              this.#isConsumerReconnecting = false;
-              console.log('Consumer connected');
-              cleanup();
-              resolve();
-            };
-
-            const onFailure = (error) => {
-              this.#isConsumerConnected = false;
-              this.#isConsumerReconnecting = true;
-              console.error(`Consumer connection failure: ${error}`);
-              cleanup();
-              reject(error);
-            };
-
-            const onError = (error) => {
-              this.#isConsumerReconnecting = true;
-              console.error(
-                `Consumer connection event error: ${error?.message || error}`,
-              );
-              cleanup();
-              reject(error);
-            };
-
-            const cleanup = () => {
-              this.#consumer.off('ready', onReady);
-              this.#consumer.off('connection.failure', onFailure);
-              this.#consumer.off('event.error', onError);
-            };
-
-            this.#consumer.once('ready', onReady);
-            this.#consumer.once('connection.failure', onFailure);
-            this.#consumer.once('event.error', onError);
-
-            this.#consumer.connect();
+            this.#consumer.connect({}, (error) => {
+              if (error) {
+                console.error(`Consumer connection failure: ${error}`);
+                this.#isConsumerConnected = false;
+                this.#isConsumerReconnecting = true;
+                reject(error);
+              } else {
+                console.log('Consumer connected');
+                this.#isConsumerConnected = true;
+                this.#isConsumerReconnecting = false;
+                resolve();
+              }
+            });
           });
         },
         'consumer-connection',
@@ -408,7 +361,7 @@ class KafkaClient {
   async disconnectProducer() {
     try {
       if (this.#isProducerConnected) {
-        await retryConnection(
+        await retry(
           () => {
             return new Promise((resolve, reject) => {
               this.#producer.once('disconnected', () => {
@@ -450,7 +403,7 @@ class KafkaClient {
   async disconnectConsumer() {
     try {
       if (this.#isConsumerConnected) {
-        await retryConnection(
+        await retry(
           () => {
             return new Promise((resolve, reject) => {
               this.#consumer.once('disconnected', () => {
