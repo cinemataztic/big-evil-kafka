@@ -21,7 +21,7 @@ const retryConnection = async (fn, entity, numOfAttempts) => {
     timeMultiple: 2,
     retry: (error, attemptNumber) => {
       console.error(
-        `${entity} connection retry attempt ${attemptNumber} failed due to error: ${error}`,
+        `${entity} retry attempt ${attemptNumber} failed due to error: ${error}`,
       );
       return true; // Retry on failed attempt
     },
