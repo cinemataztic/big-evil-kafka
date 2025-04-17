@@ -187,42 +187,63 @@ class KafkaClient {
    * @private
    */
   async #connectProducer(numOfAttempts = this.#producerMinConnectAttempts) {
-    await retryConnection(
-      () =>
-        new Promise((resolve, reject) => {
-          const onReady = () => {
-            cleanup();
-            this.#isProducerConnected = true;
-            this.#isProducerReconnecting = false;
-            this.#producer.setPollInterval(100);
-            console.log('Producer connected');
-            resolve();
-          };
+    try {
+      await retryConnection(
+        () => {
+          return new Promise((resolve, reject) => {
+            let settled = false;
 
-          const onErrorAttempt = (error) => {
-            cleanup();
-            console.error(
-              'Producer connect attempt failed (event.error):',
-              error,
-            );
-            reject(error);
-          };
+            this.#producer.removeAllListeners('ready');
+            this.#producer.removeAllListeners('connection.failure');
 
-          const cleanup = () => {
-            this.#producer.removeListener('ready', onReady);
-            this.#producer.removeListener('event.error', onErrorAttempt);
-          };
+            const timeout = setTimeout(() => {
+              if (!settled) {
+                settled = true;
 
-          // ensure only these connect‐time listeners are active
-          cleanup();
+                this.#producer.removeListener('ready', onReady);
+                this.#producer.removeListener('connection.failure', onFailure);
+                reject(new Error('Producer connection timed out'));
+              }
+            }, 3000); // 3-second timeout
 
-          this.#producer.once('ready', onReady);
-          this.#producer.once('event.error', onErrorAttempt);
-          this.#producer.connect();
-        }),
-      'producer-connection',
-      numOfAttempts,
-    );
+            const onReady = () => {
+              if (settled) return;
+              settled = true;
+              clearTimeout(timeout);
+
+              this.#isProducerConnected = true;
+              this.#producer.setPollInterval(100);
+              console.log('Producer connected');
+
+              this.#producer.removeListener('connection.failure', onFailure);
+              resolve();
+            };
+
+            const onFailure = (error) => {
+              if (settled) return;
+              settled = true;
+              clearTimeout(timeout);
+
+              this.#isProducerConnected = false;
+              this.#isProducerReconnecting = false;
+              console.error(`Producer connection failure: ${error}`);
+
+              this.#producer.removeListener('ready', onReady);
+              reject(error);
+            };
+
+            this.#producer.once('ready', onReady);
+            this.#producer.once('connection.failure', onFailure);
+
+            this.#producer.connect();
+          });
+        },
+        'producer-connection',
+        numOfAttempts,
+      );
+    } catch (error) {
+      throw new Error(error);
+    }
   }
 
   /**
@@ -230,40 +251,63 @@ class KafkaClient {
    * @private
    */
   async #connectConsumer() {
-    await retryConnection(
-      () =>
-        new Promise((resolve, reject) => {
-          const onReady = () => {
-            cleanup();
-            this.#isConsumerConnected = true;
-            this.#isConsumerReconnecting = false;
-            console.log('Consumer connected');
-            resolve();
-          };
+    try {
+      await retryConnection(
+        () => {
+          return new Promise((resolve, reject) => {
+            let settled = false;
 
-          const onErrorAttempt = (error) => {
-            cleanup();
-            console.error(
-              'Consumer connect attempt failed (event.error):',
-              error,
-            );
-            reject(error);
-          };
+            this.#consumer.removeAllListeners('ready');
+            this.#consumer.removeAllListeners('connection.failure');
 
-          const cleanup = () => {
-            this.#consumer.removeListener('ready', onReady);
-            this.#consumer.removeListener('event.error', onErrorAttempt);
-          };
+            const timeout = setTimeout(() => {
+              if (!settled) {
+                settled = true;
 
-          cleanup();
+                this.#consumer.removeListener('ready', onReady);
+                this.#consumer.removeListener('connection.failure', onFailure);
+                reject(new Error('Consumer connection timed out'));
+              }
+            }, 3000); // Timeout set to 3 seconds
 
-          this.#consumer.once('ready', onReady);
-          this.#consumer.once('event.error', onErrorAttempt);
-          this.#consumer.connect();
-        }),
-      'consumer-connection',
-      this.#consumerMaxConnectAttempts,
-    );
+            const onReady = () => {
+              if (settled) return;
+              settled = true;
+              clearTimeout(timeout);
+
+              this.#isConsumerConnected = true;
+              console.log('Consumer connected');
+              this.#isConsumerReconnecting = false;
+
+              this.#consumer.removeListener('connection.failure', onFailure);
+              resolve();
+            };
+
+            const onFailure = (error) => {
+              if (settled) return;
+              settled = true;
+              clearTimeout(timeout);
+
+              this.#isConsumerConnected = false;
+              this.#isConsumerReconnecting = true;
+              console.error(`Consumer connection failure: ${error}`);
+
+              this.#consumer.removeListener('ready', onReady);
+              reject(error);
+            };
+
+            this.#consumer.once('ready', onReady);
+            this.#consumer.once('connection.failure', onFailure);
+
+            this.#consumer.connect();
+          });
+        },
+        'consumer-connection',
+        this.#consumerMaxConnectAttempts,
+      );
+    } catch (error) {
+      throw new Error(error);
+    }
   }
 
   /**
