@@ -202,9 +202,10 @@ class KafkaClient {
 
   /**
    * Connects to node-rdkakfa client's producer using an exponential backoff retry mechanism
+   * @param {number} [numOfAttempts=2] - The maximum number of retry attempts before the connection is considered failed.
    * @private
    */
-  async #connectProducer() {
+  async #connectProducer(numOfAttempts = this.#producerMinConnectAttempts) {
     await retryConnection(
       () =>
         new Promise((resolve, reject) => {
@@ -253,7 +254,7 @@ class KafkaClient {
           this.#producer.connect();
         }),
       'producer-connection',
-      this.#producerMinConnectAttempts,
+      numOfAttempts,
     );
   }
 
