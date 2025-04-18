@@ -116,30 +116,17 @@ class KafkaClient {
     try {
       await retryConnection(() => {
         return new Promise((resolve, reject) => {
-          // Remove any previously attached listeners for these events
-          this.#producer.removeAllListeners('ready');
-          this.#producer.removeAllListeners('event.error');
-          this.#producer.removeAllListeners('connection.failure');
-
-          this.#producer.connect();
-
-          this.#producer.once('ready', () => {
-            this.#isProducerConnected = true;
-            this.#producer.setPollInterval(100);
-            this.#producer.removeAllListeners('event.error');
-            this.#producer.removeAllListeners('connection.failure');
-            console.log('Producer connected');
-            resolve();
-          });
-
-          this.#producer.once('event.error', (err) => {
-            this.#isProducerConnected = false;
-            reject(err);
-          });
-
-          this.#producer.once('connection.failure', (err) => {
-            this.#isProducerConnected = false;
-            reject(err);
+          this.#producer.connect({}, (error) => {
+            if (error) {
+              reject(error);
+            } else {
+              this.#producer.once('ready', () => {
+                this.#isProducerConnected = true;
+                this.#producer.setPollInterval(100);
+                console.log('Producer connected');
+                resolve();
+              });
+            }
           });
         });
       }, 'producer-connection');
@@ -156,28 +143,16 @@ class KafkaClient {
     try {
       await retryConnection(() => {
         return new Promise((resolve, reject) => {
-          this.#consumer.removeAllListeners('ready');
-          this.#consumer.removeAllListeners('event.error');
-          this.#consumer.removeAllListeners('connection.failure');
-
-          this.#consumer.connect();
-
-          this.#consumer.once('ready', () => {
-            this.#isConsumerConnected = true;
-            this.#consumer.removeAllListeners('event.error');
-            this.#consumer.removeAllListeners('connection.failure');
-            console.log('Consumer connected');
-            resolve();
-          });
-
-          this.#consumer.once('event.error', (err) => {
-            this.#isConsumerConnected = false;
-            reject(err);
-          });
-
-          this.#consumer.once('connection.failure', (err) => {
-            this.#isConsumerConnected = false;
-            reject(err);
+          this.#consumer.connect({}, (error) => {
+            if (error) {
+              reject(error);
+            } else {
+              this.#consumer.once('ready', () => {
+                this.#isConsumerConnected = true;
+                console.log('Consumer connected');
+                resolve();
+              });
+            }
           });
         });
       }, 'consumer-connection');
@@ -197,9 +172,7 @@ class KafkaClient {
         await this.#connectProducer();
       }
     } catch (error) {
-      console.error(
-        `Error initializing producer: ${error.message}`,
-      );
+      console.error(`Error initializing producer: ${error.message}`);
       process.exit(1);
     }
   }
@@ -215,9 +188,7 @@ class KafkaClient {
         await this.#connectConsumer();
       }
     } catch (error) {
-      console.error(
-        `Error initializing consumer: ${error.message}`,
-      );
+      console.error(`Error initializing consumer: ${error.message}`);
       process.exit(1);
     }
   }
