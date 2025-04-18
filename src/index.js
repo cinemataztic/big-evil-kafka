@@ -55,13 +55,13 @@ class KafkaClient {
    * @type {Boolean}
    * @private
    */
-  #isProducerConnected;
+  #isProducerConnected = false;
   /**
    * The consumer connection flag.
    * @type {Boolean}
    * @private
    */
-  #isConsumerConnected;
+  #isConsumerConnected = false;
   /**
    * The interval ID.
    * @type {number | NodeJS.Timeout | null}
