@@ -120,12 +120,10 @@ class KafkaClient {
             if (error) {
               reject(error);
             } else {
-              this.#producer.once('ready', () => {
-                this.#isProducerConnected = true;
-                this.#producer.setPollInterval(100);
-                console.log('Producer connected');
-                resolve();
-              });
+              this.#isProducerConnected = true;
+              this.#producer.setPollInterval(100);
+              console.log('Producer connected');
+              resolve();
             }
           });
         });
@@ -147,11 +145,9 @@ class KafkaClient {
             if (error) {
               reject(error);
             } else {
-              this.#consumer.once('ready', () => {
-                this.#isConsumerConnected = true;
-                console.log('Consumer connected');
-                resolve();
-              });
+              this.#isConsumerConnected = true;
+              console.log('Consumer connected');
+              resolve();
             }
           });
         });
