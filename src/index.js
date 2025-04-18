@@ -146,7 +146,6 @@ class KafkaClient {
       if (this.#isProducerConnected && !this.#isProducerReconnecting) {
         console.error('Producer disconnected. Reconnecting…');
         this.#isProducerConnected = false;
-        this.#isProducerReconnecting = true;
         await this.#connectProducer();
       }
     });
@@ -155,7 +154,6 @@ class KafkaClient {
       if (!this.#isProducerReconnecting) {
         console.error(`Producer runtime error: ${error}`);
         this.#isProducerConnected = false;
-        this.#isProducerReconnecting = true;
         this.#producer.setPollInterval(0);
         await this.#retryProducerConnection();
       }
@@ -167,7 +165,6 @@ class KafkaClient {
       if (this.#isConsumerConnected && !this.#isConsumerReconnecting) {
         console.error('Consumer disconnected. Reconnecting…');
         this.#isConsumerConnected = false;
-        this.#isConsumerReconnecting = true;
         clearInterval(this.#intervalId);
         await this.#connectConsumer();
       }
@@ -177,7 +174,6 @@ class KafkaClient {
       if (!this.#isConsumerReconnecting) {
         console.error(`Consumer runtime error: ${error}`);
         this.#isConsumerConnected = false;
-        this.#isConsumerReconnecting = true;
         clearInterval(this.#intervalId);
         await this.#retryConsumerConnection();
       }
