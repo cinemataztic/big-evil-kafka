@@ -206,7 +206,7 @@ class KafkaClient {
       }
     } catch (error) {
       console.error(`Error initializing producer: ${error.message}`);
-      process.exit(1);
+      throw new Error(`Error initializing producer: ${error.message}`)
     }
   }
 
