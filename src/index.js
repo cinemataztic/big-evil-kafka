@@ -1,8 +1,7 @@
 const { Producer, KafkaConsumer } = require('node-rdkafka');
 const { SchemaRegistry } = require('@kafkajs/confluent-schema-registry');
-const { backOff } = require('exponential-backoff');
 
-const retryOptions = require('./utils/retryOptions');
+const retryConnection = require('./utils/retryConnection');
 
 /**
  * Kafka client which is a wrapper library around node-rdkafka
@@ -115,7 +114,7 @@ class KafkaClient {
    */
   async #connectProducer() {
     try {
-      await backOff(() => {
+      await retryConnection(() => {
         return new Promise((resolve, reject) => {
           // Remove any previously attached listeners for these events
           this.#producer.removeAllListeners('ready');
@@ -143,7 +142,7 @@ class KafkaClient {
             reject(err);
           });
         });
-      }, retryOptions);
+      }, 'producer-connection');
     } catch (error) {
       throw new Error(error);
     }
@@ -155,7 +154,7 @@ class KafkaClient {
    */
   async #connectConsumer() {
     try {
-      await backOff(() => {
+      await retryConnection(() => {
         return new Promise((resolve, reject) => {
           this.#consumer.removeAllListeners('ready');
           this.#consumer.removeAllListeners('event.error');
@@ -181,7 +180,7 @@ class KafkaClient {
             reject(err);
           });
         });
-      }, retryOptions);
+      }, 'consumer-connection');
     } catch (error) {
       throw new Error(error);
     }
