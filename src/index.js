@@ -154,8 +154,12 @@ class KafkaClient {
       if (!this.#isProducerReconnecting) {
         console.error(`Producer runtime error: ${error}`);
         this.#isProducerConnected = false;
+        this.#isProducerReconnecting = true;
         this.#producer.setPollInterval(0);
         await this.#retryProducerConnection();
+      } else {
+        console.log('Producer is reconnecting...');
+        return;
       }
     });
   }
@@ -174,8 +178,12 @@ class KafkaClient {
       if (!this.#isConsumerReconnecting) {
         console.error(`Consumer runtime error: ${error}`);
         this.#isConsumerConnected = false;
+        this.#isConsumerReconnecting = true;
         clearInterval(this.#intervalId);
         await this.#retryConsumerConnection();
+      } else {
+        console.log('Consumer is reconnecting...');
+        return;
       }
     });
   }
@@ -187,11 +195,6 @@ class KafkaClient {
    */
   async #connectProducer(numOfAttempts = this.#producerMinConnectAttempts) {
     try {
-      if (this.#isProducerConnected || this.#isProducerReconnecting) {
-        console.log('Producer is already connected or reconnecting.');
-        return;
-      }
-
       await retry(
         () => {
           return new Promise((resolve, reject) => {
@@ -225,11 +228,6 @@ class KafkaClient {
    */
   async #connectConsumer() {
     try {
-      if (this.#isConsumerReconnecting || this.#isConsumerConnected) {
-        console.log('Consumer is already connected or reconnecting.');
-        return;
-      }
-
       await retry(
         () => {
           return new Promise((resolve, reject) => {
@@ -454,14 +452,7 @@ class KafkaClient {
    */
   async #retryProducerConnection() {
     try {
-      this.#producer.disconnect(async (error) => {
-        if (error) {
-          console.error(`Error occurred disconnecting producer: ${error}`);
-          throw new Error(`Error disconnecting producer: ${error}`);
-        } else {
-          await this.#connectProducer(this.#producerMaxConnectAttempts);
-        }
-      });
+      await this.#connectProducer(this.#producerMaxConnectAttempts);
     } catch (error) {
       console.error(
         `Kafka producer re-connection failed with error ${error.message}. Max retries reached. Exiting...`,
@@ -476,14 +467,7 @@ class KafkaClient {
    */
   async #retryConsumerConnection() {
     try {
-      this.#consumer.disconnect(async (error) => {
-        if (error) {
-          console.error(`Error occurred disconnecting consumer: ${error}`);
-          throw new Error(`Error disconnecting consumer: ${error}`);
-        } else {
-          await this.#connectConsumer();
-        }
-      });
+      await this.#connectConsumer();
     } catch (error) {
       console.error(
         `Kafka consumer re-connection failed with error ${error.message}. Max retries reached. Exiting...`,
