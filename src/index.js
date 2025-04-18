@@ -63,17 +63,17 @@ class KafkaClient {
    */
   #isConsumerConnected = false;
   /**
-   * The producer restart flag.
-   * @type {Boolean}
+   * The producer connection retry number.
+   * @type {number}
    * @private
    */
-  #isProducerRestarting = false;
+  #producerMaxRetries = 2;
   /**
-   * The consumer restart flag.
-   * @type {Boolean}
+   * The consumer connection retry number.
+   * @type {number}
    * @private
    */
-  #isConsumerRestarting = false;
+  #consumerMaxRetries = 5;
   /**
    * The interval ID.
    * @type {number | NodeJS.Timeout | null}
@@ -146,7 +146,7 @@ class KafkaClient {
           this.#producer.once('ready', onReady);
           this.#producer.connect({}, onConnectError);
         });
-      }, 'producer-connection');
+      }, 'producer-connection', this.#producerMaxRetries);
     } catch (error) {
       throw new Error(error);
     }
@@ -180,7 +180,7 @@ class KafkaClient {
           this.#consumer.once('ready', onReady);
           this.#consumer.connect({}, onConnectError);
         });
-      }, 'consumer-connection');
+      }, 'consumer-connection', this.#consumerMaxRetries);
     } catch (error) {
       throw new Error(error);
     }
@@ -357,14 +357,14 @@ class KafkaClient {
 
   #registerProducerEventHandler() {
     this.#producer.on('event.error', (err) => {
-      if (!this.#isProducerConnected || this.#isProducerRestarting) return;
+      if (!this.#isProducerConnected) return;
       console.error(`Producer runtime error: ${err}`);
     });
   }
 
   #registerConsumerEventHandler() {
     this.#consumer.on('event.error', (err) => {
-      if (!this.#isConsumerConnected || this.#isConsumerRestarting) return;
+      if (!this.#isConsumerConnected) return;
 
       console.error(`Consumer runtime error: ${err}`);
     });
