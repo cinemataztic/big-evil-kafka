@@ -85,13 +85,11 @@ class KafkaClient {
     this.#brokers = config.brokers || ['localhost:9092'];
     this.#avroSchemaRegistry =
       config.avroSchemaRegistry || 'http://localhost:8081';
-
     this.#producer = new Producer({
       'client.id': this.#clientId,
       'metadata.broker.list': this.#brokers.join(','),
       dr_cb: false,
     });
-
     this.#consumer = new KafkaConsumer(
       {
         'group.id': this.#groupId,
@@ -104,8 +102,22 @@ class KafkaClient {
         'auto.offset.reset': 'earliest',
       },
     );
-
     this.#registry = new SchemaRegistry({ host: this.#avroSchemaRegistry });
+    this.#registerEventHandlers();
+  }
+
+  #registerEventHandlers() {
+    this.#producer.on('event.error', (err) => {
+      if (!this.#isProducerConnected) return;
+      console.error('Producer runtime error, will restart:', err);
+      this.#restartProducer();
+    });
+
+    this.#consumer.on('event.error', (err) => {
+      if (!this.#isConsumerConnected) return;
+      console.error('Consumer runtime error, will restart:', err);
+      this.#restartConsumer();
+    });
   }
 
   /**
@@ -323,6 +335,28 @@ class KafkaClient {
       this.#intervalId = null;
       console.error(`Error disconnecting Consumer: ${error}`);
       throw new Error(`Error disconnecting Consumer: ${error}`);
+    }
+  }
+
+  async #restartProducer() {
+    try {
+      await this.disconnectProducer();
+      await this.#connectProducer();
+      console.log('Producer restarted');
+    } catch (err) {
+      console.error(`Failed to restart producer: ${err}`);
+      process.exit(1);
+    }
+  }
+
+  async #restartConsumer() {
+    try {
+      await this.disconnectConsumer();
+      await this.#connectConsumer();
+      console.log('Consumer restarted');
+    } catch (err) {
+      console.error(`Failed to restart consumer: ${err}`);
+      process.exit(1);
     }
   }
 }
