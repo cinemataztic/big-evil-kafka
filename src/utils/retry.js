@@ -14,7 +14,7 @@ const { backOff } = require('exponential-backoff');
  * @throws Will throw an error if all retry attempts fail.
  */
 
-const retry = async (fn, entity, numOfAttempts) => {
+const retryConnection = async (fn, entity, numOfAttempts) => {
   return backOff(fn, {
     startingDelay: 1000,
     numOfAttempts,
@@ -28,4 +28,4 @@ const retry = async (fn, entity, numOfAttempts) => {
   });
 };
 
-module.exports = retry;
+module.exports = retryConnection;
