@@ -67,7 +67,7 @@ class KafkaClient {
    * @type {number}
    * @private
    */
-  #producerMaxRetries = 2;
+  #producerMaxRetries = 1;
   /**
    * The consumer connection retry number.
    * @type {number}
@@ -123,30 +123,34 @@ class KafkaClient {
    */
   async #connectProducer() {
     try {
-      await retryConnection(() => {
-        return new Promise((resolve, reject) => {
-          const onReady = () => {
-            cleanup();
-            this.#isProducerConnected = true;
-            this.#producer.setPollInterval(100);
-            console.log('Producer connected');
-            this.#registerProducerEventHandler();
-            resolve();
-          };
+      await retryConnection(
+        () => {
+          return new Promise((resolve, reject) => {
+            const onReady = () => {
+              cleanup();
+              this.#isProducerConnected = true;
+              this.#producer.setPollInterval(100);
+              console.log('Producer connected');
+              this.#registerProducerEventHandler();
+              resolve();
+            };
 
-          const onConnectError = (error) => {
-            cleanup();
-            reject(error);
-          };
+            const onConnectError = (error) => {
+              cleanup();
+              reject(error);
+            };
 
-          const cleanup = () => {
-            this.#producer.removeListener('ready', onReady);
-          };
+            const cleanup = () => {
+              this.#producer.removeListener('ready', onReady);
+            };
 
-          this.#producer.once('ready', onReady);
-          this.#producer.connect({}, onConnectError);
-        });
-      }, 'producer-connection', this.#producerMaxRetries);
+            this.#producer.once('ready', onReady);
+            this.#producer.connect({}, onConnectError);
+          });
+        },
+        'producer-connection',
+        this.#producerMaxRetries,
+      );
     } catch (error) {
       throw new Error(error);
     }
@@ -158,29 +162,33 @@ class KafkaClient {
    */
   async #connectConsumer() {
     try {
-      await retryConnection(() => {
-        return new Promise((resolve, reject) => {
-          const onReady = () => {
-            cleanup();
-            this.#isConsumerConnected = true;
-            console.log('Consumer connected');
-            this.#registerConsumerEventHandler();
-            resolve();
-          };
+      await retryConnection(
+        () => {
+          return new Promise((resolve, reject) => {
+            const onReady = () => {
+              cleanup();
+              this.#isConsumerConnected = true;
+              console.log('Consumer connected');
+              this.#registerConsumerEventHandler();
+              resolve();
+            };
 
-          const onConnectError = (error) => {
-            cleanup();
-            reject(error);
-          };
+            const onConnectError = (error) => {
+              cleanup();
+              reject(error);
+            };
 
-          const cleanup = () => {
-            this.#consumer.removeListener('ready', onReady);
-          };
+            const cleanup = () => {
+              this.#consumer.removeListener('ready', onReady);
+            };
 
-          this.#consumer.once('ready', onReady);
-          this.#consumer.connect({}, onConnectError);
-        });
-      }, 'consumer-connection', this.#consumerMaxRetries);
+            this.#consumer.once('ready', onReady);
+            this.#consumer.connect({}, onConnectError);
+          });
+        },
+        'consumer-connection',
+        this.#consumerMaxRetries,
+      );
     } catch (error) {
       throw new Error(error);
     }
@@ -357,15 +365,12 @@ class KafkaClient {
 
   #registerProducerEventHandler() {
     this.#producer.on('event.error', (err) => {
-      if (!this.#isProducerConnected) return;
       console.error(`Producer runtime error: ${err}`);
     });
   }
 
   #registerConsumerEventHandler() {
     this.#consumer.on('event.error', (err) => {
-      if (!this.#isConsumerConnected) return;
-
       console.error(`Consumer runtime error: ${err}`);
     });
   }
