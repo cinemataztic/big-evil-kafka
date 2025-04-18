@@ -204,13 +204,16 @@ class KafkaClient {
                 this.#isProducerConnected = false;
                 this.#isProducerReconnecting = true;
                 reject(error);
-              } else {
-                console.log('Producer connected');
-                this.#isProducerConnected = true;
-                this.#isProducerReconnecting = false;
-                this.#producer.setPollInterval(100);
-                resolve();
               }
+            });
+
+            this.#producer.once('ready', () => {
+              this.#isProducerConnected = true;
+              this.#isProducerReconnecting = false;
+              this.#producer.setPollInterval(100);
+              console.log('Producer connected');
+              this.#producer.removeAllListeners('ready');
+              resolve();
             });
           });
         },
@@ -237,12 +240,15 @@ class KafkaClient {
                 this.#isConsumerConnected = false;
                 this.#isConsumerReconnecting = true;
                 reject(error);
-              } else {
-                console.log('Consumer connected');
-                this.#isConsumerConnected = true;
-                this.#isConsumerReconnecting = false;
-                resolve();
               }
+            });
+
+            this.#consumer.once('ready', () => {
+              this.#isConsumerConnected = true;
+              this.#isConsumerReconnecting = false;
+              console.log('Consumer connected');
+              this.#consumer.removeAllListeners('ready');
+              resolve();
             });
           });
         },
