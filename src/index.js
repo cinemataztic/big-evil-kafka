@@ -120,6 +120,7 @@ class KafkaClient {
       'client.id': this.#clientId,
       'metadata.broker.list': this.#brokers.join(','),
       dr_cb: false,
+      event_cb: true,
     });
 
     this.#consumer = new KafkaConsumer(
@@ -129,6 +130,7 @@ class KafkaClient {
         'metadata.broker.list': this.#brokers.join(','),
         'enable.auto.commit': true,
         'auto.commit.interval.ms': 1000,
+        event_cb: true,
       },
       {
         'auto.offset.reset': 'earliest',
@@ -154,6 +156,7 @@ class KafkaClient {
         console.error(`Producer runtime error: ${error}`);
         this.#isProducerConnected = false;
         this.#isProducerReconnecting = true;
+        this.#producer.setPollInterval(0);
         await this.#retryProducerConnection();
       }
     });
@@ -206,6 +209,7 @@ class KafkaClient {
                 console.log('Producer connected');
                 this.#isProducerConnected = true;
                 this.#isProducerReconnecting = false;
+                this.#producer.setPollInterval(100);
                 resolve();
               }
             });
@@ -476,8 +480,6 @@ class KafkaClient {
    */
   async #retryConsumerConnection() {
     try {
-      this.#consumer.disconnect();
-
       this.#consumer.disconnect(async (error) => {
         if (error) {
           console.error(`Error occurred disconnecting consumer: ${error}`);
