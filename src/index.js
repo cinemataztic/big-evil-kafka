@@ -1,7 +1,8 @@
 const { Producer, KafkaConsumer } = require('node-rdkafka');
 const { SchemaRegistry } = require('@kafkajs/confluent-schema-registry');
+const { backOff } = require('exponential-backoff');
 
-const retryConnection = require('./utils/retry');
+const retryOptions = require('./utils/retryOptions');
 
 /**
  * Kafka client which is a wrapper library around node-rdkafka
@@ -51,35 +52,17 @@ class KafkaClient {
    */
   #registry;
   /**
-   * The consumer connection flag in case of 'disconnection' or 'event.error' events to avoid duplicate reconnection attempts.
+   * The producer connection flag.
    * @type {Boolean}
    * @private
    */
-  #isConsumerReconnecting = false;
+  #isProducerConnected;
   /**
-   * The producer reconnection flag in case of 'disconnection' or 'event.error' events to avoid duplicate reconnection attempts.
+   * The consumer connection flag.
    * @type {Boolean}
    * @private
    */
-  #isProducerReconnecting = false;
-  /**
-   * The initial retry connection attempts for producer. Initial retry attempts are set to 1.
-   * @type {number}
-   * @private
-   */
-  #producerMinConnectAttempts = 1;
-  /**
-   * The retry connection attempts for producer in case of an 'event.error' or unexpected 'disconnected' events. Retry attempts are set to 5.
-   * @type {number}
-   * @private
-   */
-  #producerMaxConnectAttempts = 5;
-  /**
-   * The retry connection attempts for consumer. Retry attempts are set to 5.
-   * @type {number}
-   * @private
-   */
-  #consumerMaxConnectAttempts = 5;
+  #isConsumerConnected;
   /**
    * The interval ID.
    * @type {number | NodeJS.Timeout | null}
@@ -92,13 +75,13 @@ class KafkaClient {
    * @constructor
    * @public
    * @param {Object} config The configuration object for kafka client initialization
-   * @param {String} config.clientId The client identifier (default: 'default-client-id')
+   * @param {String} config.clientId The client identifier (default: 'default-client')
    * @param {String} config.groupId The client group id string. All clients sharing the same groupId belong to the same group (default: 'default-group-id')
    * @param {Array} config.brokers The initial list of brokers as a CSV list of broker host or host:port (default: ['localhost:9092'])
    * @param {String} config.avroSchemaRegistry The schema registry host for encoding and decoding the messages as per the avro schemas wrt a subject (default: 'http://localhost:8081')
    */
   constructor(config = {}) {
-    this.#clientId = config.clientId || 'default-client-id';
+    this.#clientId = config.clientId || 'default-client';
     this.#groupId = config.groupId || 'default-group-id';
     this.#brokers = config.brokers || ['localhost:9092'];
     this.#avroSchemaRegistry =
@@ -108,7 +91,6 @@ class KafkaClient {
       'client.id': this.#clientId,
       'metadata.broker.list': this.#brokers.join(','),
       dr_cb: false,
-      event_cb: true,
     });
 
     this.#consumer = new KafkaConsumer(
@@ -118,37 +100,13 @@ class KafkaClient {
         'metadata.broker.list': this.#brokers.join(','),
         'enable.auto.commit': true,
         'auto.commit.interval.ms': 1000,
-        event_cb: true,
       },
       {
         'auto.offset.reset': 'earliest',
       },
     );
+
     this.#registry = new SchemaRegistry({ host: this.#avroSchemaRegistry });
-    this.#registerProducerEventListeners();
-    this.#registerConsumerEventListeners();
-  }
-
-  #registerProducerEventListeners() {
-    this.#producer.on('event.error', async (error) => {
-      if (this.#producer.isConnected() && !this.#isProducerReconnecting) {
-        console.error(`Producer runtime error: ${error}`);
-        this.#isProducerReconnecting = true;
-        this.#producer.setPollInterval(0);
-        await this.#retryProducerConnection();
-      }
-    });
-  }
-
-  #registerConsumerEventListeners() {
-    this.#consumer.on('event.error', async (error) => {
-      if (this.#consumer.isConnected() && !this.#isConsumerReconnecting) {
-        console.error(`Consumer runtime error: ${error}`);
-        this.#isConsumerReconnecting = true;
-        clearInterval(this.#intervalId);
-        await this.#retryConsumerConnection();
-      }
-    });
   }
 
   /**
@@ -157,30 +115,35 @@ class KafkaClient {
    */
   async #connectProducer() {
     try {
-      await retryConnection(
-        () => {
-          return new Promise((resolve, reject) => {
-            this.#producer.removeAllListeners('ready');
+      await backOff(() => {
+        return new Promise((resolve, reject) => {
+          // Remove any previously attached listeners for these events
+          this.#producer.removeAllListeners('ready');
+          this.#producer.removeAllListeners('event.error');
+          this.#producer.removeAllListeners('connection.failure');
+
+          this.#producer.connect();
+
+          this.#producer.once('ready', () => {
+            this.#isProducerConnected = true;
+            this.#producer.setPollInterval(100);
+            this.#producer.removeAllListeners('event.error');
             this.#producer.removeAllListeners('connection.failure');
-
-            this.#producer.connect();
-
-            this.#producer.once('ready', () => {
-              this.#isProducerReconnecting = false;
-              this.#producer.setPollInterval(100);
-              console.log('Producer connected');
-              resolve();
-            });
-
-            this.#producer.once('connection.failure', () => {
-              this.#isProducerReconnecting = true;
-              reject();
-            });
+            console.log('Producer connected');
+            resolve();
           });
-        },
-        'producer-connection',
-        this.#producerMinConnectAttempts,
-      );
+
+          this.#producer.once('event.error', (err) => {
+            this.#isProducerConnected = false;
+            reject(err);
+          });
+
+          this.#producer.once('connection.failure', (err) => {
+            this.#isProducerConnected = false;
+            reject(err);
+          });
+        });
+      }, retryOptions);
     } catch (error) {
       throw new Error(error);
     }
@@ -192,29 +155,33 @@ class KafkaClient {
    */
   async #connectConsumer() {
     try {
-      await retryConnection(
-        () => {
-          return new Promise((resolve, reject) => {
-            this.#consumer.removeAllListeners('ready');
+      await backOff(() => {
+        return new Promise((resolve, reject) => {
+          this.#consumer.removeAllListeners('ready');
+          this.#consumer.removeAllListeners('event.error');
+          this.#consumer.removeAllListeners('connection.failure');
+
+          this.#consumer.connect();
+
+          this.#consumer.once('ready', () => {
+            this.#isConsumerConnected = true;
+            this.#consumer.removeAllListeners('event.error');
             this.#consumer.removeAllListeners('connection.failure');
-
-            this.#consumer.connect();
-
-            this.#consumer.once('ready', () => {
-              this.#isConsumerReconnecting = false;
-              console.log('Consumer connected');
-              resolve();
-            });
-
-            this.#consumer.once('connection.failure', () => {
-              this.#isConsumerReconnecting = true;
-              reject();
-            });
+            console.log('Consumer connected');
+            resolve();
           });
-        },
-        'consumer-connection',
-        this.#consumerMaxConnectAttempts,
-      );
+
+          this.#consumer.once('event.error', (err) => {
+            this.#isConsumerConnected = false;
+            reject(err);
+          });
+
+          this.#consumer.once('connection.failure', (err) => {
+            this.#isConsumerConnected = false;
+            reject(err);
+          });
+        });
+      }, retryOptions);
     } catch (error) {
       throw new Error(error);
     }
@@ -225,13 +192,16 @@ class KafkaClient {
    * @private
    */
   async #initProducer() {
-    if (!this.#producer.isConnected()) {
-      console.log('Initializing producer connection…');
-      try {
+    try {
+      if (!this.#isProducerConnected) {
+        console.log('Initializing Producer..');
         await this.#connectProducer();
-      } catch (error) {
-        console.error('Producer failed to initialize:', error);
       }
+    } catch (error) {
+      console.error(
+        `Error initializing producer: ${error.message}`,
+      );
+      process.exit(1);
     }
   }
 
@@ -240,14 +210,16 @@ class KafkaClient {
    * @private
    */
   async #initConsumer() {
-    if (!this.#consumer.isConnected()) {
-      console.log('Initializing consumer connection…');
-      try {
+    try {
+      if (!this.#isConsumerConnected) {
+        console.log('Initializing Consumer..');
         await this.#connectConsumer();
-      } catch (error) {
-        console.error('Consumer failed to initialize:', error);
-        process.exit(1);
       }
+    } catch (error) {
+      console.error(
+        `Error initializing consumer: ${error.message}`,
+      );
+      process.exit(1);
     }
   }
 
@@ -257,13 +229,15 @@ class KafkaClient {
    * @param {Object} message The message to send to a topic
    * @public
    */
-  async publishToTopic(topic, message) {
+  async sendMessage(topic, message) {
     try {
       await this.#initProducer();
 
-      if (this.#producer.isConnected()) {
+      if (this.#isProducerConnected) {
         const subject = `${topic}-value`;
         const id = await this.#registry.getRegistryId(subject, 'latest');
+
+        console.log(`Using schema ${topic}-value@latest (id: ${id})`);
 
         const encodedMessage = await this.#registry.encode(id, message);
 
@@ -273,6 +247,8 @@ class KafkaClient {
           Buffer.from(encodedMessage),
           `${topic}-schema`, // Key
         );
+
+        console.log(`Successfully published data to topic: ${topic}`);
       }
     } catch (error) {
       console.error(
@@ -291,12 +267,13 @@ class KafkaClient {
    * @param {onMessage} onMessage A function that processes the decoded message data received by consumer
    * @public
    */
-  async subscribeToTopic(topic, onMessage) {
+  async consumeMessage(topic, onMessage) {
     try {
       await this.#initConsumer();
 
-      if (this.#consumer.isConnected()) {
+      if (this.#isConsumerConnected) {
         this.#consumer.subscribe([topic]);
+        console.log(`Subscribed to topic ${topic}`);
 
         if (!this.#intervalId) {
           this.#intervalId = setInterval(() => {
@@ -307,6 +284,8 @@ class KafkaClient {
         this.#consumer.on('data', async (data) => {
           try {
             const decodedValue = await this.#registry.decode(data.value);
+
+            console.log(`Message received by consumer on topic: ${topic}`);
 
             onMessage({ value: decodedValue });
           } catch (error) {
@@ -334,26 +313,22 @@ class KafkaClient {
    */
   async disconnectProducer() {
     try {
-      if (this.#producer.isConnected()) {
-        return new Promise((resolve, reject) => {
+      if (this.#isProducerConnected) {
+        return new Promise((resolve) => {
+          this.#producer.disconnect();
+
           this.#producer.once('disconnected', () => {
-            // Set setPollInterval to 0 to turn it off
+            this.#isProducerConnected = false;
             this.#producer.setPollInterval(0);
             this.#producer.removeAllListeners();
-            console.log('Producer disconnected');
+            console.log('Disconnected Producer');
             resolve();
-          });
-
-          this.#producer.disconnect((error) => {
-            if (error) {
-              console.error(`Error disconnecting producer: ${error}`);
-              reject(error);
-            }
           });
         });
       }
     } catch (error) {
-      console.error(`Producer disconnection failed: ${error}`);
+      console.error(`Error disconnecting Producer: ${error}`);
+      throw new Error(`Error disconnecting Producer: ${error}`);
     }
   }
 
@@ -363,113 +338,25 @@ class KafkaClient {
    */
   async disconnectConsumer() {
     try {
-      if (this.#consumer.isConnected()) {
-        return new Promise((resolve, reject) => {
+      if (this.#isConsumerConnected) {
+        return new Promise((resolve) => {
+          this.#consumer.disconnect();
+
           this.#consumer.once('disconnected', () => {
+            this.#isConsumerConnected = false;
+            this.#consumer.removeAllListeners();
             clearInterval(this.#intervalId);
             this.#intervalId = null;
-            this.#consumer.removeAllListeners();
-            console.log('Consumer disconnected');
+            console.log('Disconnected Consumer');
             resolve();
-          });
-
-          this.#consumer.disconnect((error) => {
-            if (error) {
-              console.error(`Error disconnecting consumer: ${error}`);
-              reject(error);
-            }
           });
         });
       }
     } catch (error) {
-      console.error(`Consumer disconnection failed: ${error}`);
-    }
-  }
-
-  /**
-   * Helper function to reconnect producer in case of 'event.error' event. In case retries are exhausted then application will exit
-   * @private
-   */
-  async #retryProducerConnection() {
-    try {
-      await retryConnection(
-        () => {
-          return new Promise((resolve, reject) => {
-            this.#producer.removeAllListeners('ready');
-
-            this.#producer.disconnect((error) => {
-              if (error) {
-                console.error(`Error disconnecting producer: ${error}`);
-                reject(error);
-              }
-            });
-
-            this.#producer.connect({}, (err) => {
-              if (err) {
-                this.#isProducerReconnecting = true;
-                reject(err);
-              }
-            });
-
-            this.#producer.once('ready', () => {
-              this.#isProducerReconnecting = false;
-              this.#producer.setPollInterval(100);
-              console.log('Producer reconnected');
-              resolve();
-            });
-          });
-        },
-        'producer-reconnection',
-        this.#producerMaxConnectAttempts,
-      );
-    } catch (error) {
-      console.error(
-        `Producer reconnection failed error: ${error.message}. Max retries reached. Exiting...`,
-      );
-      process.exit(1);
-    }
-  }
-
-  /**
-   * Helper function to reconnect consumer in case of 'event.error' event. In case retries are exhausted then application will exit
-   * @private
-   */
-  async #retryConsumerConnection() {
-    try {
-      await retryConnection(
-        () => {
-          return new Promise((resolve, reject) => {
-            this.#consumer.removeAllListeners('ready');
-
-            this.#consumer.disconnect((error) => {
-              if (error) {
-                console.error(`Error disconnecting consumer: ${error}`);
-                reject(error);
-              }
-            });
-
-            this.#consumer.connect({}, (err) => {
-              if (err) {
-                this.#isConsumerReconnecting = true;
-                reject(err);
-              }
-            });
-
-            this.#consumer.once('ready', () => {
-              this.#isConsumerReconnecting = false;
-              console.log('Consumer reconnected');
-              resolve();
-            });
-          });
-        },
-        'consumer-reconnection',
-        this.#consumerMaxConnectAttempts,
-      );
-    } catch (error) {
-      console.error(
-        `Consumer reconnection failed error: ${error.message}. Max retries reached. Exiting...`,
-      );
-      process.exit(1);
+      clearInterval(this.#intervalId);
+      this.#intervalId = null;
+      console.error(`Error disconnecting Consumer: ${error}`);
+      throw new Error(`Error disconnecting Consumer: ${error}`);
     }
   }
 }
