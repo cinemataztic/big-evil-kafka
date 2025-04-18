@@ -356,53 +356,18 @@ class KafkaClient {
   }
 
   #registerProducerEventHandler() {
-    this.#producer.on('event.error', (err) => this.#onProducerError(err));
-  }
-
-  /** Debounced handler — only one restart in flight at a time */
-  #onProducerError(err) {
-    if (!this.#isProducerConnected) return; // still in startup?
-    if (this.#isProducerRestarting) return; // already restarting?
-
-    console.error('Producer runtime error, will restart:', err);
-    this.#isProducerRestarting = true;
-
-    this.#restartProducer()
-      .catch((e) => console.error('Failed to restart producer:', e))
-      .finally(() => {
-        this.#isProducerRestarting = false;
-      });
-  }
-
-  /** Graceful tear‑down + reconnect */
-  async #restartProducer() {
-    await this.disconnectProducer();
-    await this.#connectProducer();
-    console.log('Producer restarted');
+    this.#producer.on('event.error', (err) => {
+      if (!this.#isProducerConnected || this.#isProducerRestarting) return;
+      console.error(`Producer runtime error: ${err}`);
+    });
   }
 
   #registerConsumerEventHandler() {
-    this.#consumer.on('event.error', (err) => this.#onConsumerError(err));
-  }
+    this.#consumer.on('event.error', (err) => {
+      if (!this.#isConsumerConnected || this.#isConsumerRestarting) return;
 
-  #onConsumerError(err) {
-    if (!this.#isConsumerConnected) return;
-    if (this.#isConsumerRestarting) return;
-
-    console.error('Consumer runtime error, will restart:', err);
-    this.#isConsumerRestarting = true;
-
-    this.#restartConsumer()
-      .catch((e) => console.error('Failed to restart consumer:', e))
-      .finally(() => {
-        this.#isConsumerRestarting = false;
-      });
-  }
-
-  async #restartConsumer() {
-    await this.disconnectConsumer();
-    await this.#connectConsumer();
-    console.log('Consumer restarted');
+      console.error(`Consumer runtime error: ${err}`);
+    });
   }
 }
 
