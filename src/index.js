@@ -206,7 +206,7 @@ class KafkaClient {
       }
     } catch (error) {
       console.error(`Error initializing producer: ${error.message}`);
-      throw new Error(`Error initializing producer: ${error.message}`)
+      throw new Error(`Error initializing producer: ${error.message}`);
     }
   }
 
@@ -222,7 +222,13 @@ class KafkaClient {
       }
     } catch (error) {
       console.error(`Error initializing consumer: ${error.message}`);
-      process.exit(1);
+      setTimeout(() => {
+        console.error(
+          'Application will be terminated in 10 seconds because the consumer failed to initialize.',
+        );
+        process.exit(1);
+      }, 10000);
+      throw error;
     }
   }
 
