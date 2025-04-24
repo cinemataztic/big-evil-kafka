@@ -260,12 +260,8 @@ class KafkaClient {
         console.log(`Successfully published data to topic: ${topic}`);
       }
     } catch (error) {
-      console.error(
-        `Error occurred in sending message to topic ${topic}: ${error}`,
-      );
-      throw new Error(
-        `Error occurred in sending message to topic ${topic}: ${error}`,
-      );
+      console.error(`publishToTopic ('${topic}') failed: ${error}`);
+      throw new Error(`publishToTopic ('${topic}') failed: ${error}`);
     }
   }
 
@@ -298,21 +294,15 @@ class KafkaClient {
 
             onMessage({ value: decodedValue });
           } catch (error) {
-            console.error(
-              `Error occurred consuming messages from ${topic}: ${error}`,
-            );
+            console.error(`Consume from topic '${topic}' failed: ${error}`);
           }
         });
       }
     } catch (error) {
-      console.error(
-        `Error occurred in consuming message from topic ${topic}: ${error}`,
-      );
+      console.error(`subscribeToTopic ('${topic}') failed: ${error}`);
       clearInterval(this.#intervalId);
       this.#intervalId = null;
-      throw new Error(
-        `Error occurred in consuming message from topic ${topic}: ${error}`,
-      );
+      throw new Error(`subscribeToTopic ('${topic}') failed: ${error}`);
     }
   }
 
@@ -336,8 +326,8 @@ class KafkaClient {
         });
       }
     } catch (error) {
-      console.error(`Error disconnecting Producer: ${error}`);
-      throw new Error(`Error disconnecting Producer: ${error}`);
+      console.error(`Producer disconnect failed: ${error}`);
+      throw new Error(`Producer disconnect failed: ${error}`);
     }
   }
 
@@ -364,8 +354,8 @@ class KafkaClient {
     } catch (error) {
       clearInterval(this.#intervalId);
       this.#intervalId = null;
-      console.error(`Error disconnecting Consumer: ${error}`);
-      throw new Error(`Error disconnecting Consumer: ${error}`);
+      console.error(`Consumer disconnect failed: ${error}`);
+      throw new Error(`Consumer disconnect failed: ${error}`);
     }
   }
 
