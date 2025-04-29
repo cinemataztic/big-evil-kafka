@@ -228,7 +228,7 @@ class KafkaClient {
         );
         process.exit(1);
       }, 10000);
-      throw error;
+      throw new Error(`Error initializing consumer: ${error.message}`);
     }
   }
 
@@ -241,7 +241,11 @@ class KafkaClient {
   async publishToTopic(topic, message) {
     try {
       await this.#initProducer();
+    } catch (error) {
+      throw new Error(error.message);
+    }
 
+    try {
       if (this.#isProducerConnected) {
         const subject = `${topic}-value`;
         const id = await this.#registry.getRegistryId(subject, 'latest');
@@ -275,7 +279,11 @@ class KafkaClient {
   async subscribeToTopic(topic, onMessage) {
     try {
       await this.#initConsumer();
+    } catch (error) {
+      throw new Error(error.message);
+    }
 
+    try {
       if (this.#isConsumerConnected) {
         this.#consumer.subscribe([topic]);
         console.log(`Subscribed to topic ${topic}`);
@@ -314,8 +322,6 @@ class KafkaClient {
     try {
       if (this.#isProducerConnected) {
         return new Promise((resolve) => {
-          this.#producer.disconnect();
-
           this.#producer.once('disconnected', () => {
             this.#isProducerConnected = false;
             this.#producer.setPollInterval(0);
@@ -323,6 +329,8 @@ class KafkaClient {
             console.log('Disconnected Producer');
             resolve();
           });
+
+          this.#producer.disconnect();
         });
       }
     } catch (error) {
@@ -339,8 +347,6 @@ class KafkaClient {
     try {
       if (this.#isConsumerConnected) {
         return new Promise((resolve) => {
-          this.#consumer.disconnect();
-
           this.#consumer.once('disconnected', () => {
             this.#isConsumerConnected = false;
             this.#consumer.removeAllListeners();
@@ -349,6 +355,8 @@ class KafkaClient {
             console.log('Disconnected Consumer');
             resolve();
           });
+
+          this.#consumer.disconnect();
         });
       }
     } catch (error) {
