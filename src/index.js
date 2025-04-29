@@ -152,7 +152,7 @@ class KafkaClient {
         this.#producerMaxRetries,
       );
     } catch (error) {
-      throw new Error(error);
+      throw new Error(error.message);
     }
   }
 
@@ -190,7 +190,7 @@ class KafkaClient {
         this.#consumerMaxRetries,
       );
     } catch (error) {
-      throw new Error(error);
+      throw new Error(error.message);
     }
   }
 
