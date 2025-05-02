@@ -376,7 +376,7 @@ class KafkaClient extends EventEmitter{
       const errorMessage = `Producer runtime error: ${error}`;
       console.error(errorMessage);
 
-      if (now - lastErrorEmit >= 1000) {
+      if (now - lastErrorEmit >= 60000) {
         lastErrorEmit = now;
         this.emit('producer.event.error', new Error(errorMessage), { source: 'producer' });
       }
@@ -390,7 +390,7 @@ class KafkaClient extends EventEmitter{
       const errorMessage = `Consumer runtime error: ${error}`;
       console.error(errorMessage);
 
-      if (now - lastErrorEmit >= 1000) {
+      if (now - lastErrorEmit >= 60000) {
         lastErrorEmit = now;
         this.emit('consumer.event.error', new Error(errorMessage), { source: 'consumer' });
       }
