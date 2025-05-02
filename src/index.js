@@ -1,5 +1,6 @@
 const { Producer, KafkaConsumer } = require('node-rdkafka');
 const { SchemaRegistry } = require('@kafkajs/confluent-schema-registry');
+const { EventEmitter } = require('events');
 
 const retryConnection = require('./utils/retryConnection');
 
@@ -7,7 +8,7 @@ const retryConnection = require('./utils/retryConnection');
  * Kafka client which is a wrapper library around node-rdkafka
  *
  */
-class KafkaClient {
+class KafkaClient extends EventEmitter{
   /**
    * The client identifier .
    * @type {String}
@@ -92,6 +93,7 @@ class KafkaClient {
    * @param {String} config.avroSchemaRegistry The schema registry host for encoding and decoding the messages as per the avro schemas wrt a subject (default: 'http://localhost:8081')
    */
   constructor(config = {}) {
+    super();
     this.#clientId = config.clientId || 'default-client';
     this.#groupId = config.groupId || 'default-group-id';
     this.#brokers = config.brokers || ['localhost:9092'];
@@ -368,14 +370,30 @@ class KafkaClient {
   }
 
   #registerProducerEventHandler() {
-    this.#producer.on('event.error', (err) => {
-      console.error(`Producer runtime error: ${err}`);
+    let lastErrorEmit = 0;
+    this.#producer.on('event.error', (error) => {
+      const now = Date.now();
+      const errorMessage = `Producer runtime error: ${error}`;
+      console.error(errorMessage);
+
+      if (now - lastErrorEmit >= 1000) {
+        lastErrorEmit = now;
+        this.emit('producer.event.error', new Error(errorMessage), { source: 'producer' });
+      }
     });
   }
 
   #registerConsumerEventHandler() {
-    this.#consumer.on('event.error', (err) => {
-      console.error(`Consumer runtime error: ${err}`);
+    let lastErrorEmit = 0;
+    this.#consumer.on('event.error', (error) => {
+      const now = Date.now();
+      const errorMessage = `Consumer runtime error: ${error}`;
+      console.error(errorMessage);
+
+      if (now - lastErrorEmit >= 1000) {
+        lastErrorEmit = now;
+        this.emit('consumer.event.error', new Error(errorMessage), { source: 'consumer' });
+      }
     });
   }
 }
