@@ -1,5 +1,6 @@
 const { Producer, KafkaConsumer } = require('node-rdkafka');
 const { SchemaRegistry } = require('@kafkajs/confluent-schema-registry');
+const { EventEmitter } = require('events');
 
 const retryConnection = require('./utils/retryConnection');
 
@@ -7,7 +8,7 @@ const retryConnection = require('./utils/retryConnection');
  * Kafka client which is a wrapper library around node-rdkafka
  *
  */
-class KafkaClient {
+class KafkaClient extends EventEmitter{
   /**
    * The client identifier .
    * @type {String}
@@ -92,6 +93,7 @@ class KafkaClient {
    * @param {String} config.avroSchemaRegistry The schema registry host for encoding and decoding the messages as per the avro schemas wrt a subject (default: 'http://localhost:8081')
    */
   constructor(config = {}) {
+    super();
     this.#clientId = config.clientId || 'default-client';
     this.#groupId = config.groupId || 'default-group-id';
     this.#brokers = config.brokers || ['localhost:9092'];
@@ -152,7 +154,7 @@ class KafkaClient {
         this.#producerMaxRetries,
       );
     } catch (error) {
-      throw new Error(error);
+      throw new Error(error.message);
     }
   }
 
@@ -190,7 +192,7 @@ class KafkaClient {
         this.#consumerMaxRetries,
       );
     } catch (error) {
-      throw new Error(error);
+      throw new Error(error.message);
     }
   }
 
@@ -228,7 +230,7 @@ class KafkaClient {
         );
         process.exit(1);
       }, 10000);
-      throw error;
+      throw new Error(`Error initializing consumer: ${error.message}`);
     }
   }
 
@@ -241,7 +243,11 @@ class KafkaClient {
   async publishToTopic(topic, message) {
     try {
       await this.#initProducer();
+    } catch (error) {
+      throw new Error(error.message);
+    }
 
+    try {
       if (this.#isProducerConnected) {
         const subject = `${topic}-value`;
         const id = await this.#registry.getRegistryId(subject, 'latest');
@@ -275,7 +281,11 @@ class KafkaClient {
   async subscribeToTopic(topic, onMessage) {
     try {
       await this.#initConsumer();
+    } catch (error) {
+      throw new Error(error.message);
+    }
 
+    try {
       if (this.#isConsumerConnected) {
         this.#consumer.subscribe([topic]);
         console.log(`Subscribed to topic ${topic}`);
@@ -314,8 +324,6 @@ class KafkaClient {
     try {
       if (this.#isProducerConnected) {
         return new Promise((resolve) => {
-          this.#producer.disconnect();
-
           this.#producer.once('disconnected', () => {
             this.#isProducerConnected = false;
             this.#producer.setPollInterval(0);
@@ -323,6 +331,8 @@ class KafkaClient {
             console.log('Disconnected Producer');
             resolve();
           });
+
+          this.#producer.disconnect();
         });
       }
     } catch (error) {
@@ -339,8 +349,6 @@ class KafkaClient {
     try {
       if (this.#isConsumerConnected) {
         return new Promise((resolve) => {
-          this.#consumer.disconnect();
-
           this.#consumer.once('disconnected', () => {
             this.#isConsumerConnected = false;
             this.#consumer.removeAllListeners();
@@ -349,6 +357,8 @@ class KafkaClient {
             console.log('Disconnected Consumer');
             resolve();
           });
+
+          this.#consumer.disconnect();
         });
       }
     } catch (error) {
@@ -360,14 +370,30 @@ class KafkaClient {
   }
 
   #registerProducerEventHandler() {
-    this.#producer.on('event.error', (err) => {
-      console.error(`Producer runtime error: ${err}`);
+    let lastErrorEmit = 0;
+    this.#producer.on('event.error', (error) => {
+      const now = Date.now();
+      const errorMessage = `Producer runtime error: ${error}`;
+      console.error(errorMessage);
+
+      if (now - lastErrorEmit >= 60000) {
+        lastErrorEmit = now;
+        this.emit('producer.event.error', new Error(errorMessage), { source: 'producer' });
+      }
     });
   }
 
   #registerConsumerEventHandler() {
-    this.#consumer.on('event.error', (err) => {
-      console.error(`Consumer runtime error: ${err}`);
+    let lastErrorEmit = 0;
+    this.#consumer.on('event.error', (error) => {
+      const now = Date.now();
+      const errorMessage = `Consumer runtime error: ${error}`;
+      console.error(errorMessage);
+
+      if (now - lastErrorEmit >= 60000) {
+        lastErrorEmit = now;
+        this.emit('consumer.event.error', new Error(errorMessage), { source: 'consumer' });
+      }
     });
   }
 }
