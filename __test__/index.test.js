@@ -10,7 +10,7 @@ jest.setTimeout(30000);
 beforeAll(async () => {
   kafkaClient = new KafkaClient({
     clientId: "ctz-client",
-    groupId: "ctz-group",
+    groupId: `ctz-group-${Date.now()}`, // Ensure a unique group ID for each test run to avoid consumer group conflicts
     brokers: process.env.KAFKA_BROKERS
       ? process.env.KAFKA_BROKERS.split(",")
       : ["localhost:9092"],
@@ -60,10 +60,12 @@ describe("Kafka client integration tests", () => {
   });
 
   test("should route messages from multiple topics to their respective callbacks", async () => {
+    jest.setTimeout(30000); 
+
     const topicA = "cinemataztic";
     const topicB = "cinemataztic-a";
 
-    await kafkaClient.publishToTopic(topicB, { message: "second-topic" });
+    await kafkaClient.publishToTopic(topicB, { message: "warm-up-topic" });
     
     await new Promise((resolve) => setTimeout(resolve, 3000));
 
@@ -87,6 +89,7 @@ describe("Kafka client integration tests", () => {
         if (data?.value?.message === uniqueMessageA) {
           expect(data).toHaveProperty("topic", topicA);
           expect(data.value).toHaveProperty("message", uniqueMessageA);
+          console.log("✅ Callback A successfully received and verified message!");
           resolveA(); 
         }
       } catch (error) {
@@ -99,6 +102,7 @@ describe("Kafka client integration tests", () => {
         if (data?.value?.message === uniqueMessageB) {
           expect(data).toHaveProperty("topic", topicB);
           expect(data.value).toHaveProperty("message", uniqueMessageB);
+          console.log("✅ Callback B successfully received and verified message!");
           resolveB(); 
         }
       } catch (error) {
@@ -110,8 +114,17 @@ describe("Kafka client integration tests", () => {
 
     await kafkaClient.publishToTopic(topicA, { message: uniqueMessageA });
     await kafkaClient.publishToTopic(topicB, { message: uniqueMessageB });
+    
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error("CRITICAL TIMEOUT: Callbacks never fired after 15 seconds. Consumer is not receiving data.")), 15000);
+    });
 
-    await Promise.all([messageReceivedPromiseA, messageReceivedPromiseB]);
+    await Promise.race([
+      Promise.all([messageReceivedPromiseA, messageReceivedPromiseB]),
+      timeoutPromise
+    ]);
+    
+    console.log("🎉 Test completed successfully!");
   });
 });
 
