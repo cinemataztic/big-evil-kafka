@@ -316,9 +316,6 @@ class KafkaClient extends EventEmitter {
         if (!this.#isDataListenerAttached) {
           this.#consumer.on("data", async (data) => {
             try {
-              const decodedValue = await this.#registry.decode(data.value);
-
-              // Route the message to the correct callback based on the topic
               const targetCallback = this.#topicCallbacks.get(data.topic);
 
               if (!targetCallback) {
@@ -331,6 +328,7 @@ class KafkaClient extends EventEmitter {
               console.log(
                 `Message received by consumer on topic: ${data.topic}`,
               );
+
               targetCallback({ value: decodedValue, topic: data.topic });
             } catch (error) {
               console.error(
