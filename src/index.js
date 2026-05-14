@@ -1,14 +1,14 @@
-const { Producer, KafkaConsumer } = require('node-rdkafka');
-const { SchemaRegistry } = require('@kafkajs/confluent-schema-registry');
-const { EventEmitter } = require('events');
+const { Producer, KafkaConsumer } = require("node-rdkafka");
+const { SchemaRegistry } = require("@kafkajs/confluent-schema-registry");
+const { EventEmitter } = require("events");
 
-const retryConnection = require('./utils/retryConnection');
+const retryConnection = require("./utils/retryConnection");
 
 /**
  * Kafka client which is a wrapper library around node-rdkafka
  *
  */
-class KafkaClient extends EventEmitter{
+class KafkaClient extends EventEmitter {
   /**
    * The client identifier .
    * @type {String}
@@ -81,6 +81,19 @@ class KafkaClient extends EventEmitter{
    * @private
    */
   #intervalId;
+  /**
+   * Stores callbacks mapped by topic.
+   * @type {Map<string, Function>}
+   * @private
+   */
+  #topicCallbacks = new Map();
+
+  /**
+   * Flag to ensure the data listener is only attached once.
+   * @type {Boolean}
+   * @private
+   */
+  #isDataListenerAttached = false;
 
   /**
    * Initialize Kafka Client
@@ -94,26 +107,26 @@ class KafkaClient extends EventEmitter{
    */
   constructor(config = {}) {
     super();
-    this.#clientId = config.clientId || 'default-client';
-    this.#groupId = config.groupId || 'default-group-id';
-    this.#brokers = config.brokers || ['localhost:9092'];
+    this.#clientId = config.clientId || "default-client";
+    this.#groupId = config.groupId || "default-group-id";
+    this.#brokers = config.brokers || ["localhost:9092"];
     this.#avroSchemaRegistry =
-      config.avroSchemaRegistry || 'http://localhost:8081';
+      config.avroSchemaRegistry || "http://localhost:8081";
     this.#producer = new Producer({
-      'client.id': this.#clientId,
-      'metadata.broker.list': this.#brokers.join(','),
+      "client.id": this.#clientId,
+      "metadata.broker.list": this.#brokers.join(","),
       dr_cb: false,
     });
     this.#consumer = new KafkaConsumer(
       {
-        'group.id': this.#groupId,
-        'client.id': this.#clientId,
-        'metadata.broker.list': this.#brokers.join(','),
-        'enable.auto.commit': true,
-        'auto.commit.interval.ms': 1000,
+        "group.id": this.#groupId,
+        "client.id": this.#clientId,
+        "metadata.broker.list": this.#brokers.join(","),
+        "enable.auto.commit": true,
+        "auto.commit.interval.ms": 1000,
       },
       {
-        'auto.offset.reset': 'earliest',
+        "auto.offset.reset": "earliest",
       },
     );
     this.#registry = new SchemaRegistry({ host: this.#avroSchemaRegistry });
@@ -132,7 +145,7 @@ class KafkaClient extends EventEmitter{
               cleanup();
               this.#isProducerConnected = true;
               this.#producer.setPollInterval(100);
-              console.log('Producer connected');
+              console.log("Producer connected");
               this.#registerProducerEventHandler();
               resolve();
             };
@@ -143,14 +156,14 @@ class KafkaClient extends EventEmitter{
             };
 
             const cleanup = () => {
-              this.#producer.removeListener('ready', onReady);
+              this.#producer.removeListener("ready", onReady);
             };
 
-            this.#producer.once('ready', onReady);
+            this.#producer.once("ready", onReady);
             this.#producer.connect({}, onConnectError);
           });
         },
-        'producer-connection',
+        "producer-connection",
         this.#producerMaxRetries,
       );
     } catch (error) {
@@ -170,7 +183,7 @@ class KafkaClient extends EventEmitter{
             const onReady = () => {
               cleanup();
               this.#isConsumerConnected = true;
-              console.log('Consumer connected');
+              console.log("Consumer connected");
               this.#registerConsumerEventHandler();
               resolve();
             };
@@ -181,14 +194,14 @@ class KafkaClient extends EventEmitter{
             };
 
             const cleanup = () => {
-              this.#consumer.removeListener('ready', onReady);
+              this.#consumer.removeListener("ready", onReady);
             };
 
-            this.#consumer.once('ready', onReady);
+            this.#consumer.once("ready", onReady);
             this.#consumer.connect({}, onConnectError);
           });
         },
-        'consumer-connection',
+        "consumer-connection",
         this.#consumerMaxRetries,
       );
     } catch (error) {
@@ -203,7 +216,7 @@ class KafkaClient extends EventEmitter{
   async #initProducer() {
     try {
       if (!this.#isProducerConnected) {
-        console.log('Initializing Producer..');
+        console.log("Initializing Producer..");
         await this.#connectProducer();
       }
     } catch (error) {
@@ -219,17 +232,12 @@ class KafkaClient extends EventEmitter{
   async #initConsumer() {
     try {
       if (!this.#isConsumerConnected) {
-        console.log('Initializing Consumer..');
+        console.log("Initializing Consumer..");
         await this.#connectConsumer();
       }
     } catch (error) {
       console.error(`Error initializing consumer: ${error.message}`);
-      setTimeout(() => {
-        console.error(
-          'Application will be terminated in 10 seconds because the consumer failed to initialize.',
-        );
-        process.exit(1);
-      }, 10000);
+      this.emit('fatal.error', new Error('Consumer failed to initialize'));
       throw new Error(`Error initializing consumer: ${error.message}`);
     }
   }
@@ -250,7 +258,7 @@ class KafkaClient extends EventEmitter{
     try {
       if (this.#isProducerConnected) {
         const subject = `${topic}-value`;
-        const id = await this.#registry.getRegistryId(subject, 'latest');
+        const id = await this.#registry.getRegistryId(subject, "latest");
 
         console.log(`Using schema ${topic}-value@latest (id: ${id})`);
 
@@ -287,8 +295,12 @@ class KafkaClient extends EventEmitter{
 
     try {
       if (this.#isConsumerConnected) {
-        this.#consumer.subscribe([topic]);
-        console.log(`Subscribed to topic ${topic}`);
+        this.#topicCallbacks.set(topic, onMessage);
+
+        // Subscribe to all topics that have registered callbacks
+        const allTopics = Array.from(this.#topicCallbacks.keys());
+        this.#consumer.subscribe(allTopics);
+        console.log(`Subscribed to topics: ${allTopics.join(", ")}`);
 
         if (!this.#intervalId) {
           this.#intervalId = setInterval(() => {
@@ -296,17 +308,32 @@ class KafkaClient extends EventEmitter{
           }, 1000);
         }
 
-        this.#consumer.on('data', async (data) => {
-          try {
-            const decodedValue = await this.#registry.decode(data.value);
+        // Attach the data listener only once to avoid multiple listeners being registered on subsequent subscribeToTopic calls
+        if (!this.#isDataListenerAttached) {
+          this.#consumer.on("data", async (data) => {
+            try {
+              const decodedValue = await this.#registry.decode(data.value);
 
-            console.log(`Message received by consumer on topic: ${topic}`);
+              // Route the message to the correct callback based on the topic
+              const targetCallback = this.#topicCallbacks.get(data.topic);
 
-            onMessage({ value: decodedValue });
-          } catch (error) {
-            console.error(`Consume from topic '${topic}' failed: ${error}`);
-          }
-        });
+              if (targetCallback) {
+                console.log(
+                  `Message received by consumer on topic: ${data.topic}`,
+                );
+                targetCallback({ value: decodedValue, topic: data.topic });
+              } else {
+                console.warn(`No callback registered for topic: ${data.topic}`);
+              }
+            } catch (error) {
+              console.error(
+                `Consume from topic '${data.topic}' failed: ${error}`,
+              );
+            }
+          });
+
+          this.#isDataListenerAttached = true;
+        }
       }
     } catch (error) {
       console.error(`subscribeToTopic ('${topic}') failed: ${error}`);
@@ -324,11 +351,11 @@ class KafkaClient extends EventEmitter{
     try {
       if (this.#isProducerConnected) {
         return new Promise((resolve) => {
-          this.#producer.once('disconnected', () => {
+          this.#producer.once("disconnected", () => {
             this.#isProducerConnected = false;
             this.#producer.setPollInterval(0);
             this.#producer.removeAllListeners();
-            console.log('Disconnected Producer');
+            console.log("Disconnected Producer");
             resolve();
           });
 
@@ -349,12 +376,14 @@ class KafkaClient extends EventEmitter{
     try {
       if (this.#isConsumerConnected) {
         return new Promise((resolve) => {
-          this.#consumer.once('disconnected', () => {
+          this.#consumer.once("disconnected", () => {
             this.#isConsumerConnected = false;
+            this.#isDataListenerAttached = false; // Reset data listener flag
+            this.#topicCallbacks.clear(); // Clear all registered callbacks
             this.#consumer.removeAllListeners();
             clearInterval(this.#intervalId);
             this.#intervalId = null;
-            console.log('Disconnected Consumer');
+            console.log("Disconnected Consumer");
             resolve();
           });
 
@@ -371,28 +400,32 @@ class KafkaClient extends EventEmitter{
 
   #registerProducerEventHandler() {
     let lastErrorEmit = 0;
-    this.#producer.on('event.error', (error) => {
+    this.#producer.on("event.error", (error) => {
       const now = Date.now();
       const errorMessage = `Producer runtime error: ${error}`;
       console.error(errorMessage);
 
       if (now - lastErrorEmit >= 60000) {
         lastErrorEmit = now;
-        this.emit('producer.event.error', new Error(errorMessage), { source: 'producer' });
+        this.emit("producer.event.error", new Error(errorMessage), {
+          source: "producer",
+        });
       }
     });
   }
 
   #registerConsumerEventHandler() {
     let lastErrorEmit = 0;
-    this.#consumer.on('event.error', (error) => {
+    this.#consumer.on("event.error", (error) => {
       const now = Date.now();
       const errorMessage = `Consumer runtime error: ${error}`;
       console.error(errorMessage);
 
       if (now - lastErrorEmit >= 60000) {
         lastErrorEmit = now;
-        this.emit('consumer.event.error', new Error(errorMessage), { source: 'consumer' });
+        this.emit("consumer.event.error", new Error(errorMessage), {
+          source: "consumer",
+        });
       }
     });
   }
