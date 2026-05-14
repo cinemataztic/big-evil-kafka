@@ -237,7 +237,7 @@ class KafkaClient extends EventEmitter {
       }
     } catch (error) {
       console.error(`Error initializing consumer: ${error.message}`);
-      this.emit('fatal.error', new Error('Consumer failed to initialize'));
+      this.emit("fatal.error", new Error("Consumer failed to initialize"));
       throw new Error(`Error initializing consumer: ${error.message}`);
     }
   }
@@ -299,7 +299,11 @@ class KafkaClient extends EventEmitter {
 
         // Subscribe to all topics that have registered callbacks
         const allTopics = Array.from(this.#topicCallbacks.keys());
+        if (!allTopics.includes(topic)) {
+          allTopics.push(topic);
+        }
         this.#consumer.subscribe(allTopics);
+        this.#topicCallbacks.set(topic, onMessage);
         console.log(`Subscribed to topics: ${allTopics.join(", ")}`);
 
         if (!this.#intervalId) {
@@ -317,14 +321,17 @@ class KafkaClient extends EventEmitter {
               // Route the message to the correct callback based on the topic
               const targetCallback = this.#topicCallbacks.get(data.topic);
 
-              if (targetCallback) {
-                console.log(
-                  `Message received by consumer on topic: ${data.topic}`,
-                );
-                targetCallback({ value: decodedValue, topic: data.topic });
-              } else {
+              if (!targetCallback) {
                 console.warn(`No callback registered for topic: ${data.topic}`);
+                return;
               }
+
+              const decodedValue = await this.#registry.decode(data.value);
+
+              console.log(
+                `Message received by consumer on topic: ${data.topic}`,
+              );
+              targetCallback({ value: decodedValue, topic: data.topic });
             } catch (error) {
               console.error(
                 `Consume from topic '${data.topic}' failed: ${error}`,

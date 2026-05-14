@@ -59,50 +59,54 @@ describe("Kafka client integration tests", () => {
     await messageReceivedPromise;
   });
 
-  test("should route messages from multiple topics to their respective callbacks", async () => {
-    const topicA = "cinemataztic";
-    const topicB = "cinemataztic-a";
-
+  test('should route messages from multiple topics to their respective callbacks', async () => {
+    const topicA = 'cinemataztic';
+    const topicB = 'cinemataztic-a';
+    
     const uniqueMessageA = `Message A - ${Date.now()}`;
     const uniqueMessageB = `Message B - ${Date.now()}`;
 
-    const messageReceivedPromiseA = new Promise((resolve, reject) => {
-      kafkaClient
-        .subscribeToTopic(topicA, (data) => {
-          try {
-            if (data?.value?.message === uniqueMessageA) {
-              expect(data).toHaveProperty("topic", topicA);
-              expect(data.value).toHaveProperty("message", uniqueMessageA);
-              resolve();
-            }
-          } catch (error) {
-            reject(error);
-          }
-        })
-        .catch(reject);
+    let resolveA, rejectA;
+    const messageReceivedPromiseA = new Promise((res, rej) => {
+      resolveA = res;
+      rejectA = rej;
     });
 
-    const messageReceivedPromiseB = new Promise((resolve, reject) => {
-      kafkaClient
-        .subscribeToTopic(topicB, (data) => {
-          try {
-            if (data?.value?.message === uniqueMessageB) {
-              expect(data).toHaveProperty("topic", topicB);
-              expect(data.value).toHaveProperty("message", uniqueMessageB);
-              resolve();
-            }
-          } catch (error) {
-            reject(error);
-          }
-        })
-        .catch(reject);
+    let resolveB, rejectB;
+    const messageReceivedPromiseB = new Promise((res, rej) => {
+      resolveB = res;
+      rejectB = rej;
     });
 
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+    await kafkaClient.subscribeToTopic(topicA, (data) => {
+      try {
+        if (data?.value?.message === uniqueMessageA) {
+          expect(data).toHaveProperty('topic', topicA);
+          expect(data.value).toHaveProperty('message', uniqueMessageA);
+          resolveA(); // Trigger the promise to resolve
+        }
+      } catch (error) {
+        rejectA(error);
+      }
+    });
+
+    await kafkaClient.subscribeToTopic(topicB, (data) => {
+      try {
+        if (data?.value?.message === uniqueMessageB) {
+          expect(data).toHaveProperty('topic', topicB);
+          expect(data.value).toHaveProperty('message', uniqueMessageB);
+          resolveB(); // Trigger the promise to resolve
+        }
+      } catch (error) {
+        rejectB(error);
+      }
+    });
+
+    await new Promise((resolve) => setTimeout(resolve, 5000));
 
     await kafkaClient.publishToTopic(topicA, { message: uniqueMessageA });
     await kafkaClient.publishToTopic(topicB, { message: uniqueMessageB });
-
+ 
     await Promise.all([messageReceivedPromiseA, messageReceivedPromiseB]);
   });
 });
