@@ -63,6 +63,10 @@ describe("Kafka client integration tests", () => {
     const topicA = "cinemataztic";
     const topicB = "cinemataztic-a";
 
+    await kafkaClient.publishToTopic(topicB, { message: "second-topic" });
+    
+    await new Promise((resolve) => setTimeout(resolve, 3000));
+
     const uniqueMessageA = `Message A - ${Date.now()}`;
     const uniqueMessageB = `Message B - ${Date.now()}`;
 
@@ -83,7 +87,7 @@ describe("Kafka client integration tests", () => {
         if (data?.value?.message === uniqueMessageA) {
           expect(data).toHaveProperty("topic", topicA);
           expect(data.value).toHaveProperty("message", uniqueMessageA);
-          resolveA(); // Trigger the promise to resolve
+          resolveA(); 
         }
       } catch (error) {
         rejectA(error);
@@ -95,7 +99,7 @@ describe("Kafka client integration tests", () => {
         if (data?.value?.message === uniqueMessageB) {
           expect(data).toHaveProperty("topic", topicB);
           expect(data.value).toHaveProperty("message", uniqueMessageB);
-          resolveB(); // Trigger the promise to resolve
+          resolveB(); 
         }
       } catch (error) {
         rejectB(error);

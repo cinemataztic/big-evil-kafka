@@ -124,6 +124,7 @@ class KafkaClient extends EventEmitter {
         "metadata.broker.list": this.#brokers.join(","),
         "enable.auto.commit": true,
         "auto.commit.interval.ms": 1000,
+        "topic.metadata.refresh.interval.ms": 5000,
       },
       {
         "auto.offset.reset": "earliest",
