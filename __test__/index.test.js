@@ -60,8 +60,8 @@ describe("Kafka client integration tests", () => {
   });
 
   test("should route messages from multiple topics to their respective callbacks", async () => {
-    const topicA = "cinemataztic-a";
-    const topicB = "cinemataztic-b";
+    const topicA = "cinemataztic";
+    const topicB = "cinemataztic-a";
 
     const uniqueMessageA = `Message A - ${Date.now()}`;
     const uniqueMessageB = `Message B - ${Date.now()}`;
