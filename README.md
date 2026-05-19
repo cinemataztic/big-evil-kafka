@@ -75,7 +75,10 @@ client.publishToTopic(topic, message);
 
 ## Subscribing to a Topic
 
-The package uses non-flowing consumer mode with `enable.auto.commit` enabled along with `auto.offset.reset` set to earliest.
+The package uses non-flowing consumer mode with `enable.auto.commit` disabled for manual commit internally along with `auto.offset.reset` set to earliest.
+```js
+this.#consumer.commitMessage(data);
+```
 
 The messages are consumed at an interval of 1 second with 10 messages consumed at each interval. 
 
