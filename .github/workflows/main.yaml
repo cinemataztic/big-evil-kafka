@@ -15,14 +15,14 @@ jobs:
     runs-on: ubuntu-latest
     services:
       zookeeper:
-        image: confluentinc/cp-zookeeper:latest
+        image: confluentinc/cp-zookeeper:7.4.0
         ports:
           - 2181:2181
         env:
           ZOOKEEPER_CLIENT_PORT: 2181
 
       kafka:
-        image: confluentinc/cp-kafka:latest
+        image: confluentinc/cp-kafka:7.4.0
         ports:
           - 29092:29092
           - 9092:9092
@@ -42,7 +42,7 @@ jobs:
         options: --health-cmd="kafka-topics --bootstrap-server localhost:9092 --list || exit 1" --health-interval=10s --health-timeout=5s --health-retries=5    
 
       schema-registry:
-        image: confluentinc/cp-schema-registry:latest
+        image: confluentinc/cp-schema-registry:7.4.0
         ports:
           - 8081:8081
         env:
@@ -60,14 +60,23 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Deploy 'cinemataztic-value' avro schema to schema-registry service
+      - name: Deploy avro schemas to schema-registry service
         run: |
+          # 1. Deploy 'cinemataztic-value' schema
           echo '{
             "schema": "{\"type\":\"record\",\"name\":\"HelloCinemataztic\",\"fields\":[{\"name\":\"message\",\"type\":\"string\"}]}"
-          }' > schema.json
+          }' > schema_default.json
 
           echo "Deploying 'cinemataztic-value' avro schema to schema-registry"
-          curl -X POST -H "Content-Type: application/vnd.schemaregistry.v1+json" --data @schema.json http://localhost:8081/subjects/cinemataztic-value/versions
+          curl -X POST -H "Content-Type: application/vnd.schemaregistry.v1+json" --data @schema_default.json http://localhost:8081/subjects/cinemataztic-value/versions
+
+          # 2. Deploy 'cinemataztic-a-value' schema
+          echo '{
+            "schema": "{\"type\":\"record\",\"name\":\"HelloCinematazticA\",\"fields\":[{\"name\":\"message\",\"type\":\"string\"}]}"
+          }' > schema_a.json
+
+          echo "\nDeploying 'cinemataztic-a-value' avro schema to schema-registry"
+          curl -X POST -H "Content-Type: application/vnd.schemaregistry.v1+json" --data @schema_a.json http://localhost:8081/subjects/cinemataztic-a-value/versions
 
       - name: Run tests
         run: npm run test:ci --if-present
